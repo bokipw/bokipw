@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoCrypto — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --red:#e63946; --red-dark:#c1121f; --gold:#ffd60a; --bg:#0a0a0f; --surface:#12121a; --surface2:#1a1a26; --border:#2a2a3a; --text:#e8e8f0; --text-dim:#7a7a9a; --green:#50c878; }
+  body { font-family:'Rajdhani',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; position:relative; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(230,57,70,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(230,57,70,0.03) 1px,transparent 1px); background-size:40px 40px; animation:gridMove 20s linear infinite; pointer-events:none; z-index:0; }
+  @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(40px)} }
+  .orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0; }
+  .orb-1 { width:400px; height:400px; background:rgba(230,57,70,0.08); top:-100px; left:-100px; animation:float1 8s ease-in-out infinite; }
+  .orb-2 { width:300px; height:300px; background:rgba(255,214,10,0.05); bottom:-50px; right:-50px; animation:float2 10s ease-in-out infinite; }
+  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,30px)} }
+  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-20px)} }
+
+  /* LOGIN */
+  #loginOverlay { position:fixed; inset:0; background:rgba(10,10,15,0.97); z-index:100; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px); }
+  .login-box { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:40px; width:100%; max-width:420px; position:relative; overflow:hidden; animation:fadeUp 0.5s ease both; }
+  .login-box::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--red),var(--gold),transparent); }
+  .login-title { font-family:'Orbitron',monospace; font-size:0.9rem; letter-spacing:3px; color:var(--text-dim); text-transform:uppercase; margin-bottom:4px; text-align:center; }
+  .login-sub { font-size:0.85rem; color:var(--text-dim); text-align:center; margin-bottom:28px; letter-spacing:1px; }
+  .admin-badge { display:inline-block; background:rgba(255,214,10,0.1); border:1px solid rgba(255,214,10,0.3); color:var(--gold); font-family:'Orbitron',monospace; font-size:0.6rem; letter-spacing:2px; padding:3px 10px; border-radius:20px; margin-bottom:20px; }
+  .input-label { display:block; font-size:0.8rem; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+  .input-wrap { position:relative; margin-bottom:20px; }
+  .input-wrap::before { content:'@'; position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--red); font-family:'Orbitron',monospace; font-size:0.9rem; }
+  input[type=text] { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px 16px 14px 38px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1.1rem; letter-spacing:1px; transition:border-color 0.2s,box-shadow 0.2s; outline:none; }
+  input[type=text]:focus { border-color:var(--red); box-shadow:0 0 0 3px rgba(230,57,70,0.1); }
+  input[type=text]::placeholder { color:var(--text-dim); font-size:0.95rem; }
+  .btn { width:100%; padding:16px; background:linear-gradient(135deg,var(--red-dark),var(--red)); border:none; border-radius:8px; color:white; font-family:'Orbitron',monospace; font-size:0.85rem; font-weight:700; letter-spacing:3px; text-transform:uppercase; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden; }
+  .btn::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); transition:left 0.4s; }
+  .btn:hover::before { left:100%; }
+  .btn:hover { transform:translateY(-1px); box-shadow:0 8px 25px rgba(230,57,70,0.4); }
+  .btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+  .status { margin-top:16px; padding:12px 16px; border-radius:8px; font-size:0.9rem; letter-spacing:1px; display:none; }
+  .status.error { display:block; background:rgba(230,57,70,0.1); border:1px solid rgba(230,57,70,0.3); color:#ff6b78; }
+  .status.info { display:block; background:rgba(255,214,10,0.08); border:1px solid rgba(255,214,10,0.2); color:var(--gold); }
+  .status.success { display:block; background:rgba(80,200,120,0.1); border:1px solid rgba(80,200,120,0.3); color:var(--green); }
+
+  /* HEADER */
+  .header { position:relative; z-index:10; display:flex; align-items:center; justify-content:space-between; padding:20px 40px; border-bottom:1px solid var(--border); background:rgba(10,10,15,0.8); backdrop-filter:blur(10px); }
+  .logo-text { font-family:'Orbitron',monospace; font-size:1.8rem; font-weight:900; letter-spacing:4px; background:linear-gradient(135deg,var(--red) 0%,var(--gold) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none; }
+  .header-right { display:flex; align-items:center; gap:12px; }
+  .nav-btn { padding:8px 20px; border-radius:6px; font-family:'Orbitron',monospace; font-size:0.7rem; letter-spacing:2px; cursor:pointer; transition:all 0.2s; text-decoration:none; border:1px solid var(--border); color:var(--text-dim); background:none; }
+  .nav-btn:hover { border-color:var(--red); color:var(--red); }
+  .nav-btn.active { background:linear-gradient(135deg,var(--red-dark),var(--red)); border:none; color:white; }
+  .admin-tag { font-family:'Orbitron',monospace; font-size:0.6rem; letter-spacing:2px; padding:4px 10px; border-radius:20px; background:rgba(255,214,10,0.1); border:1px solid rgba(255,214,10,0.3); color:var(--gold); }
+
+  /* MAIN */
+  #adminMain { display:none; position:relative; z-index:10; max-width:1100px; margin:0 auto; padding:40px 20px; }
+  .page-title { font-family:'Orbitron',monospace; font-size:1.6rem; font-weight:900; letter-spacing:4px; background:linear-gradient(135deg,var(--red),var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:4px; }
+  .page-sub { font-size:0.8rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:40px; }
+
+  /* STATS ROW */
+  .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:40px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; position:relative; overflow:hidden; }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--red),var(--gold),transparent); }
+  .stat-label { font-size:0.7rem; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; }
+  .stat-value { font-family:'Orbitron',monospace; font-size:1.8rem; font-weight:900; color:var(--text); }
+  .stat-value.gold { color:var(--gold); }
+  .stat-value.green { color:var(--green); }
+  .stat-value.red { color:var(--red); }
+
+  /* ORDERS TABLE */
+  .section-title { font-family:'Orbitron',monospace; font-size:0.85rem; letter-spacing:3px; color:var(--text-dim); text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+  .refresh-btn { font-size:0.65rem; padding:4px 12px; border:1px solid var(--border); border-radius:6px; background:none; color:var(--text-dim); cursor:pointer; font-family:'Orbitron',monospace; letter-spacing:1px; transition:all 0.2s; }
+  .refresh-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+  .orders-wrap { background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:40px; }
+  .orders-table { width:100%; border-collapse:collapse; }
+  .orders-table th { background:var(--surface2); font-family:'Orbitron',monospace; font-size:0.65rem; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; padding:14px 20px; text-align:left; border-bottom:1px solid var(--border); }
+  .orders-table td { padding:16px 20px; border-bottom:1px solid var(--border); font-size:0.9rem; vertical-align:middle; }
+  .orders-table tr:last-child td { border-bottom:none; }
+  .orders-table tr:hover td { background:rgba(255,255,255,0.02); }
+
+  .buyer-name { font-family:'Orbitron',monospace; font-size:0.85rem; color:var(--text); }
+  .token-tag { font-family:'Orbitron',monospace; font-size:0.75rem; padding:3px 10px; border-radius:20px; background:rgba(230,57,70,0.1); border:1px solid rgba(230,57,70,0.3); color:var(--red); }
+  .amount-val { font-family:'Orbitron',monospace; font-size:0.85rem; color:var(--gold); }
+  .paid-val { font-family:'Orbitron',monospace; font-size:0.8rem; color:var(--text-dim); }
+  .date-val { font-size:0.8rem; color:var(--text-dim); }
+
+  .status-badge { display:inline-block; font-family:'Orbitron',monospace; font-size:0.6rem; letter-spacing:1px; padding:4px 10px; border-radius:20px; }
+  .status-badge.pending { background:rgba(255,214,10,0.1); border:1px solid rgba(255,214,10,0.3); color:var(--gold); }
+  .status-badge.sent { background:rgba(80,200,120,0.1); border:1px solid rgba(80,200,120,0.3); color:var(--green); }
+
+  .send-btn { padding:8px 16px; background:linear-gradient(135deg,var(--red-dark),var(--red)); border:none; border-radius:6px; color:white; font-family:'Orbitron',monospace; font-size:0.65rem; letter-spacing:2px; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .send-btn:hover { transform:translateY(-1px); box-shadow:0 4px 15px rgba(230,57,70,0.4); }
+  .send-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
+  .sent-label { font-family:'Orbitron',monospace; font-size:0.65rem; color:var(--green); letter-spacing:1px; }
+
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text-dim); font-size:0.9rem; letter-spacing:1px; }
+  .loading-state { text-align:center; padding:40px; color:var(--text-dim); font-size:0.85rem; letter-spacing:2px; animation:pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* SUPPLY TABLE */
+  .supply-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+  .supply-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  .supply-symbol { font-family:'Orbitron',monospace; font-size:1rem; font-weight:900; margin-bottom:12px; }
+  .supply-bar-wrap { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:8px; }
+  .supply-bar-fill { height:100%; background:linear-gradient(90deg,var(--red),var(--gold)); border-radius:3px; }
+  .supply-nums { display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-dim); font-family:'Orbitron',monospace; }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  /* TABS */
+  .admin-tabs { display:flex; gap:0; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:4px; margin-bottom:32px; max-width:760px; }
+  .admin-tab { flex:1; padding:12px; text-align:center; font-family:'Orbitron',monospace; font-size:0.7rem; letter-spacing:2px; border-radius:8px; cursor:pointer; transition:all 0.2s; color:var(--text-dim); border:none; background:none; }
+  .admin-tab.active { background:linear-gradient(135deg,var(--red-dark),var(--red)); color:white; }
+  .admin-tab:not(.active):hover { color:var(--text); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* DUNGEON TABLE */
+  .dungeon-reward-tag { font-family:'Orbitron',monospace; font-size:0.7rem; padding:2px 8px; border-radius:4px; background:rgba(255,214,10,0.1); border:1px solid rgba(255,214,10,0.2); color:var(--gold); margin-right:4px; display:inline-block; }
+
+  @media(max-width:700px) {
+    .header { padding:16px 20px; }
+    .orders-table th:nth-child(4),.orders-table td:nth-child(4) { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div style="text-align:center;margin-bottom:16px;"><span class="admin-badge">⚡ ADMIN ONLY</span></div>
+    <div class="login-title">Admin Access</div>
+    <div class="login-sub">Only @bokica80 can enter</div>
+    <label class="input-label">Hive Username</label>
+    <div class="input-wrap">
+      <input type="text" id="username" placeholder="bokica80" autocomplete="off"/>
+    </div>
+    <button class="btn" id="loginBtn" onclick="adminLogin()">Login with Keychain</button>
+    <div class="status" id="loginStatus"></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <a href="index.html" class="logo-text">BoCrypto</a>
+  <div class="header-right">
+    <span class="admin-tag">⚡ ADMIN</span>
+    <a href="index.html" class="nav-btn">Dashboard</a>
+    <a href="shop.html" class="nav-btn">Shop</a>
+    <a href="leaderboard.html" class="nav-btn">Leaderboard</a>
+    <a href="faucet.html" class="nav-btn">Faucet</a>
+    <button class="nav-btn" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- ADMIN MAIN -->
+<div id="adminMain">
+  <div class="page-title">ADMIN PANEL</div>
+  <div class="page-sub">BoCrypto Management — @bokica80</div>
+
+  <!-- TABS -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" id="tab-shop" onclick="switchAdminTab('shop')">🛒 SHOP ORDERS</button>
+    <button class="admin-tab" id="tab-dungeon" onclick="switchAdminTab('dungeon')">⚔ DUNGEON REWARDS</button>
+    <button class="admin-tab" id="tab-faucet" onclick="switchAdminTab('faucet')">⚡ FAUCET WITHDRAW</button>
+  </div>
+
+  <!-- SHOP TAB -->
+  <div class="tab-content active" id="tabContent-shop">
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Orders</div>
+        <div class="stat-value" id="statTotal">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Delivery</div>
+        <div class="stat-value red" id="statPending">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Delivered</div>
+        <div class="stat-value green" id="statDelivered">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">BoCrypto Received</div>
+        <div class="stat-value gold" id="statIncome">—</div>
+      </div>
+    </div>
+
+    <!-- MONTHLY RESET -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:24px;">
+      <button onclick="resetMonthly()" style="padding:10px 24px;background:rgba(230,57,70,0.1);border:1px solid rgba(230,57,70,0.3);color:var(--red);font-family:'Orbitron',monospace;font-size:0.7rem;letter-spacing:2px;border-radius:8px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(230,57,70,0.2)'" onmouseout="this.style.background='rgba(230,57,70,0.1)'">
+        🗓 RESET MONTHLY LEADERBOARD
+      </button>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="section-title">
+      Incoming Orders
+      <button class="refresh-btn" onclick="loadOrders()">↺ REFRESH</button>
+    </div>
+    <div class="orders-wrap">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>Buyer</th>
+            <th>Token</th>
+            <th>Amount</th>
+            <th>Paid</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody">
+          <tr><td colspan="7" class="loading-state">Loading orders...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SUPPLY -->
+    <div class="section-title">Supply Overview</div>
+    <div class="supply-grid" id="supplyGrid"></div>
+  </div>
+
+  <!-- DUNGEON TAB -->
+  <div class="tab-content" id="tabContent-dungeon">
+    <!-- DUNGEON STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Runs</div>
+        <div class="stat-value" id="dStatTotal">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Victories</div>
+        <div class="stat-value green" id="dStatVictories">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Rewards</div>
+        <div class="stat-value red" id="dStatPending">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">BoCrypto Earned</div>
+        <div class="stat-value gold" id="dStatIncome">—</div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      Dungeon Victories
+      <button class="refresh-btn" onclick="loadDungeonRewards()">↺ REFRESH</button>
+    </div>
+    <div class="orders-wrap">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Rewards Won</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="dungeonBody">
+          <tr><td colspan="5" class="loading-state">Loading dungeon runs...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FAUCET TAB -->
+  <div class="tab-content" id="tabContent-faucet">
+    <!-- FAUCET STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Requests</div>
+        <div class="stat-value" id="fStatTotal">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value red" id="fStatPending">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value green" id="fStatCompleted">—</div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      💰 BPW Withdraw Requests (1 BoCrypto fee collected)
+      <button class="refresh-btn" onclick="loadFaucetRequests()">↺ REFRESH</button>
+    </div>
+    <div class="orders-wrap">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="faucetBody">
+          <tr><td colspan="5" class="loading-state">Loading withdraw requests...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ADMIN_USER = 'bokica80';
+  const SHOP_TOKENS = ['BOCRYPTO','BPW','BCM'];
+
+  // Konverzija u BoCrypto ekvivalent (ista kao u shop.html)
+  const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 500, BCM: 1000000 };
+  const SATOSHI_TO_UNIT = { BOCRYPTO: 1, BPW: 0.00000001, BCM: 1 };
+  function toBoCrypto(amount, sym) {
+    return (amount || 0) * (PAYMENT_RATES[sym] || 0) / (SATOSHI_TO_UNIT[sym] || 1);
+  }
+
+  // Token catalog (same as shop.html)
+  const TOKENS = [
+    { symbol:'BCM', unitSize:1, unitLabel:'BCM', pricePerUnit:1000000, totalSupply:867 },
+    { symbol:'SWAP.BTC', unitSize:0.00000001, unitLabel:'satoshi BTC', pricePerUnit:1000, totalSupply:250 },
+    { symbol:'SIM', unitSize:1000, unitLabel:'SIM', pricePerUnit:10000, totalSupply:100 },
+    { symbol:'BPW', unitSize:0.00000001, unitLabel:'satoshi BPW', pricePerUnit:500, totalSupply:100000000 },
+    { symbol:'SWAP.ETH', unitSize:0.00000001, unitLabel:'satoshi ETH', pricePerUnit:250, totalSupply:3847 },
+    { symbol:'SPT', unitSize:100, unitLabel:'SPT', pricePerUnit:1000, totalSupply:200 },
+    { symbol:'PEPE', unitSize:1000, unitLabel:'PEPE', pricePerUnit:1000, totalSupply:1000 }
+  ];
+
+  let currentUser = null;
+  let orders = [];
+  // deliveredTxIds persisted in localStorage - keyed by trx_id of incoming purchase
+  let deliveredTxIds = new Set(JSON.parse(localStorage.getItem('bo_delivered_v2') || '[]'));
+
+  // ── AUTO-LOGIN ──
+  window.addEventListener('load', function() {
+    const saved = sessionStorage.getItem('bocrypto_admin');
+    if (saved === ADMIN_USER) { currentUser = saved; enterAdmin(); }
+  });
+
+  // ── LOGIN ──
+  function showLoginStatus(msg, type) { const el=document.getElementById('loginStatus'); el.textContent=msg; el.className='status '+type; }
+
+  async function adminLogin() {
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    if (!username) { showLoginStatus('Enter your username.','error'); return; }
+    if (username !== ADMIN_USER) { showLoginStatus('Access denied. Not an admin account.','error'); return; }
+    if (typeof window.hive_keychain==='undefined') { showLoginStatus('Hive Keychain not detected.','error'); return; }
+    const btn=document.getElementById('loginBtn');
+    btn.disabled=true; btn.textContent='Connecting...';
+    showLoginStatus('Waiting for Keychain...','info');
+    window.hive_keychain.requestSignBuffer(username,`BoCrypto Admin Login - ${Date.now()}`,'Posting',function(response){
+      btn.disabled=false; btn.textContent='Login with Keychain';
+      if (response.success) {
+        currentUser=username;
+        sessionStorage.setItem('bocrypto_admin',username);
+        document.getElementById('loginOverlay').style.display='none';
+        enterAdmin();
+      } else {
+        showLoginStatus(response.message||'Login failed.','error');
+      }
+    });
+  }
+
+  function logout() {
+    currentUser=null;
+    sessionStorage.removeItem('bocrypto_admin');
+    document.getElementById('adminMain').style.display='none';
+    document.getElementById('loginOverlay').style.display='flex';
+    document.getElementById('username').value='';
+  }
+
+  document.getElementById('username').addEventListener('keydown',e=>{if(e.key==='Enter')adminLogin();});
+
+  // ── ENTER ADMIN ──
+  function enterAdmin() {
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('adminMain').style.display='block';
+    loadOrders();
+    renderSupply();
+    loadDungeonRewards();
+    loadFaucetRequests();
+  }
+
+  // ── TAB SWITCH ──
+  function switchAdminTab(tab) {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('tabContent-' + tab).classList.add('active');
+  }
+
+  // ── LOAD DUNGEON REWARDS ──
+  let dungeonRuns = [];
+  let dungeonDelivered = new Set(JSON.parse(localStorage.getItem('bo_dungeon_delivered') || '[]'));
+  let dungeonDeleted = new Set(JSON.parse(localStorage.getItem('bo_dungeon_deleted') || '[]'));
+
+  async function loadDungeonRewards() {
+    document.getElementById('dungeonBody').innerHTML = '<tr><td colspan="5" class="loading-state">Fetching dungeon runs...</td></tr>';
+    try {
+      // 1) Entry fees -> know who played
+      const entryRes = await fetch('https://history.hive-engine.com/accountHistory?account=' + ADMIN_USER + '&symbol=BOCRYPTO&limit=500&offset=0');
+      const entryData = await entryRes.json();
+      const entries = (entryData||[]).filter(tx =>
+        tx.operation === 'tokens_transfer' && tx.to === ADMIN_USER &&
+        tx.memo && tx.memo.includes('BoCrypto Dungeon Entry')
+      );
+
+      // 2) Unique players (from memo username or sender)
+      const players = [];
+      entries.forEach(tx => {
+        const m = (tx.memo||'').match(/Dungeon Entry\s*-\s*([a-z0-9.\-_]+)/i);
+        const user = ((m && m[1]) || tx.from || '').toLowerCase();
+        if (user && !players.includes(user)) players.push(user);
+      });
+      if (!players.includes(ADMIN_USER)) players.unshift(ADMIN_USER);
+      const toScan = players.slice(-20);
+
+      // 3) Victory records live in EACH PLAYER's own account history (custom_json)
+      const scans = await Promise.all(toScan.map(user =>
+        fetch('https://api.hive.blog', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ jsonrpc:'2.0', method:'condenser_api.get_account_history', params:[user, -1, 500], id:1 })
+        }).then(r => r.json()).then(j => ({ user, ops: (j && j.result) || [] }))
+          .catch(() => ({ user, ops: [] }))
+      ));
+
+      const seenIds = new Set();
+      const victories = [];
+      scans.forEach(({ user, ops }) => {
+        (ops || []).forEach(([, op]) => {
+          if (!op || op.op[0] !== 'custom_json' || !op.op[1] || op.op[1].id !== 'bocrypto-dungeon') return;
+          try {
+            const d = JSON.parse(op.op[1].json);
+            if (d.action !== 'victory') return;
+            const id = op.trx_id || (op.timestamp + '_' + user);
+            if (seenIds.has(id)) return;
+            seenIds.add(id);
+            victories.push({
+              id: id,
+              player: (d.player || user).toLowerCase(),
+              rewards: d.rewards || [],
+              timestamp: new Date(op.timestamp + 'Z').getTime() / 1000,
+              trx_id: op.trx_id
+            });
+          } catch(e) {}
+        });
+      });
+      victories.sort((a, b) => b.timestamp - a.timestamp);
+
+      dungeonRuns = victories.filter(v => !dungeonDeleted.has(v.id));
+
+      // Update stats
+      const totalIncome = entries.reduce((s, tx) => s + parseFloat(tx.quantity||0), 0);
+      const pending = dungeonRuns.filter(v => !dungeonDelivered.has(v.id)).length;
+      document.getElementById('dStatTotal').textContent = entries.length;
+      document.getElementById('dStatVictories').textContent = dungeonRuns.length;
+      document.getElementById('dStatPending').textContent = pending;
+      document.getElementById('dStatIncome').textContent = Math.round(totalIncome).toLocaleString();
+
+      renderDungeonRows();
+    } catch(e) {
+      document.getElementById('dungeonBody').innerHTML = '<tr><td colspan="5" class="loading-state" style="color:var(--red)">Error loading. Try refresh.</td></tr>';
+    }
+  }
+
+  function renderDungeonRows() {
+    const tbody = document.getElementById('dungeonBody');
+    if (!dungeonRuns.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No victories yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = dungeonRuns.map((run, idx) => {
+      const delivered = dungeonDelivered.has(run.id);
+      const date = new Date(run.timestamp * 1000).toLocaleDateString('sr-RS', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const rewardTags = run.rewards.map(r => `<span class="dungeon-reward-tag">${r.qty} ${r.token}</span>`).join('');
+      const safeId = run.id.toString().replace(/[^a-z0-9]/gi,'_');
+      return `
+        <tr>
+          <td><div class="buyer-name">@${run.player}</div></td>
+          <td>${rewardTags || '<span style="color:var(--text-dim)">No loot</span>'}</td>
+          <td><div class="date-val">${date}</div></td>
+          <td><span class="status-badge ${delivered?'sent':'pending'}">${delivered?'✓ SENT':'PENDING'}</span></td>
+          <td>
+            ${delivered
+              ? '<span class="sent-label">✓ Done</span>'
+              : run.rewards.length
+                ? `<button class="send-btn" id="dbtn-${safeId}" onclick="sendDungeonRewards(${idx})">SEND REWARDS</button>`
+                : '<span style="color:var(--text-dim);font-size:0.75rem;">No loot</span>'
+            }
+            <button onclick="deleteDungeonRequest('${run.id.replace(/'/g,"\\'")}')" style="background:none;border:1px solid rgba(230,57,70,0.25);color:rgba(230,57,70,0.5);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:0.8rem;margin-left:6px;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='rgba(230,57,70,0.25)';this.style.color='rgba(230,57,70,0.5)'" title="Delete Permanently">🗑</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ── DELETE DUNGEON RECORD ──
+  function deleteDungeonRequest(runId) {
+    if (!confirm('Permanently delete this dungeon record from admin panel?')) return;
+    dungeonDeleted.add(runId);
+    localStorage.setItem('bo_dungeon_deleted', JSON.stringify([...dungeonDeleted]));
+    dungeonRuns = dungeonRuns.filter(r => r.id !== runId);
+    const pending = dungeonRuns.filter(v => !dungeonDelivered.has(v.id)).length;
+    document.getElementById('dStatVictories').textContent = dungeonRuns.length;
+    document.getElementById('dStatPending').textContent = pending;
+    renderDungeonRows();
+  }
+
+  async function sendDungeonRewards(idx) {
+    const run = dungeonRuns[idx];
+    if (!run || !run.rewards.length) return;
+    const runId = run.id;
+    const player = run.player;
+    const rewards = run.rewards;
+    const safeId = runId.toString().replace(/[^a-z0-9]/gi,'_');
+    const btn = document.getElementById('dbtn-' + safeId);
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+
+    // Send each reward token one by one
+    let ri = 0;
+    function sendNext() {
+      if (ri >= rewards.length) {
+        dungeonDelivered.add(runId);
+        localStorage.setItem('bo_dungeon_delivered', JSON.stringify([...dungeonDelivered]));
+        renderDungeonRows();
+        loadDungeonRewards();
+        return;
+      }
+      const reward = rewards[ri];
+      const json = JSON.stringify({
+        contractName: 'tokens',
+        contractAction: 'transfer',
+        contractPayload: {
+          symbol: reward.token,
+          to: player,
+          quantity: reward.qty.toFixed(3).toString(),
+          memo: 'BoCrypto Dungeon Reward — victory run ' + runId.toString().slice(0,12)
+        }
+      });
+      window.hive_keychain.requestCustomJson(
+        ADMIN_USER, 'ssc-mainnet-hive', 'Active', json,
+        'Send ' + reward.qty + ' ' + reward.token + ' to @' + player,
+        function(response) {
+          if (response.success) {
+            ri++;
+            sendNext();
+          } else {
+            if (btn) { btn.disabled = false; btn.textContent = 'SEND REWARDS'; }
+            alert('Failed sending ' + reward.token + ': ' + (response.message || 'Unknown error'));
+          }
+        }
+      );
+    }
+    sendNext();
+  }
+
+  // ── FAUCET WITHDRAW REQUESTS ──
+  let faucetRequests = [];
+  let faucetCompleted = new Set(JSON.parse(localStorage.getItem('bo_faucet_completed') || '[]'));
+  let faucetDeleted = new Set(JSON.parse(localStorage.getItem('bo_faucet_deleted') || '[]'));
+
+  async function loadFaucetRequests() {
+    document.getElementById('faucetBody').innerHTML = '<tr><td colspan="5" class="loading-state">Fetching withdraw requests...</td></tr>';
+    try {
+      const res = await fetch('https://history.hive-engine.com/accountHistory?account=' + ADMIN_USER + '&symbol=BOCRYPTO&limit=500&offset=0');
+      const data = await res.json();
+
+      faucetRequests = (data || [])
+        .filter(tx => tx.operation === 'tokens_transfer' && tx.to === ADMIN_USER && tx.memo && tx.memo.indexOf('BPW_WITHDRAW:') === 0)
+        .map(tx => {
+          const parts = tx.memo.split(':');
+          const txId = tx.trx_id || (tx.timestamp + '_' + (parts[1] || tx.from));
+          if (faucetDeleted.has(txId)) return null;
+          return {
+            id: txId,
+            user: parts[1] || tx.from,
+            amount: parseInt(parts[2]) || 250,
+            timestamp: tx.timestamp,
+            completed: faucetCompleted.has(txId)
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.timestamp - a.timestamp);
+
+      renderFaucetTable();
+      updateFaucetStats();
+    } catch(e) {
+      document.getElementById('faucetBody').innerHTML = '<tr><td colspan="5" class="loading-state" style="color:var(--red)">Error loading. Try refresh.</td></tr>';
+    }
+  }
+
+  function renderFaucetTable() {
+    const tbody = document.getElementById('faucetBody');
+    if (!faucetRequests.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No withdraw requests yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = faucetRequests.map(r => {
+      const date = new Date(r.timestamp * 1000).toLocaleDateString('sr-RS', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const safeId = r.id.replace(/[^a-z0-9]/gi,'_');
+      return `
+        <tr>
+          <td><div class="buyer-name">@${r.user}</div></td>
+          <td><div class="amount-val">${r.amount} satoshi BPW</div></td>
+          <td><div class="date-val">${date}</div></td>
+          <td><span class="status-badge ${r.completed?'sent':'pending'}">${r.completed?'✓ COMPLETED':'PENDING'}</span></td>
+          <td>
+            ${r.completed
+              ? '<span class="sent-label">✓ Done</span>'
+              : `<button class="send-btn" id="fbtn-${safeId}" onclick="sendBPW('${r.user.replace(/'/g,"\\'")}',${r.amount},'${r.id.replace(/'/g,"\\'")}')">SEND BPW</button>`
+            }
+            <button onclick="deleteFaucetRequest('${r.id.replace(/'/g,"\\'")}')" style="background:none;border:1px solid rgba(230,57,70,0.25);color:rgba(230,57,70,0.5);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:0.8rem;margin-left:6px;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='rgba(230,57,70,0.25)';this.style.color='rgba(230,57,70,0.5)'" title="Delete Permanently">🗑</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function updateFaucetStats() {
+    const total = faucetRequests.length;
+    const completed = faucetRequests.filter(r => r.completed).length;
+    document.getElementById('fStatTotal').textContent = total;
+    document.getElementById('fStatPending').textContent = total - completed;
+    document.getElementById('fStatCompleted').textContent = completed;
+  }
+
+  function sendBPW(username, amount, requestId) {
+    if (typeof window.hive_keychain === 'undefined') { alert('Keychain not detected!'); return; }
+    const safeId = requestId.replace(/[^a-z0-9]/gi,'_');
+    const btn = document.getElementById('fbtn-' + safeId);
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+
+    const bpwAmount = (amount / 100000000).toFixed(8);
+    const jsonPayload = JSON.stringify({
+      contractName: 'tokens',
+      contractAction: 'transfer',
+      contractPayload: {
+        symbol: 'BPW',
+        to: username,
+        quantity: bpwAmount,
+        memo: 'BPW Faucet Withdrawal - ' + amount + ' satoshi'
+      }
+    });
+
+    window.hive_keychain.requestCustomJson(ADMIN_USER, 'ssc-mainnet-hive', 'Active', jsonPayload, 'Send ' + bpwAmount + ' BPW to @' + username, function(response) {
+      if (response.success) {
+        faucetCompleted.add(requestId);
+        localStorage.setItem('bo_faucet_completed', JSON.stringify([...faucetCompleted]));
+        loadFaucetRequests();
+      } else {
+        if (btn) { btn.disabled = false; btn.textContent = 'SEND BPW'; }
+        alert('Failed: ' + (response.message || 'Unknown error'));
+      }
+    });
+  }
+
+  function deleteFaucetRequest(requestId) {
+    if (!confirm('Permanently delete this request from admin panel?')) return;
+    faucetDeleted.add(requestId);
+    localStorage.setItem('bo_faucet_deleted', JSON.stringify([...faucetDeleted]));
+    faucetRequests = faucetRequests.filter(r => r.id !== requestId);
+    renderFaucetTable();
+    updateFaucetStats();
+  }
+
+  // ── LOAD ORDERS from Hive-Engine transaction history ──
+  async function loadOrders() {
+    document.getElementById('ordersBody').innerHTML='<tr><td colspan="7" class="loading-state">Fetching transactions...</td></tr>';
+    try {
+      // Fetch incoming payments in all accepted tokens (BOCRYPTO, BPW, BCM)
+      const [bocryptoRes, bpwRes, bcmRes] = await Promise.all([
+        fetch('https://history.hive-engine.com/accountHistory?account=' + ADMIN_USER + '&symbol=BOCRYPTO&limit=500&offset=0'),
+        fetch('https://history.hive-engine.com/accountHistory?account=' + ADMIN_USER + '&symbol=BPW&limit=500&offset=0'),
+        fetch('https://history.hive-engine.com/accountHistory?account=' + ADMIN_USER + '&symbol=BCM&limit=500&offset=0')
+      ]);
+      const bocryptoData = await bocryptoRes.json();
+      const bpwData = await bpwRes.json();
+      const bcmData = await bcmRes.json();
+      const data = (bocryptoData||[]).concat(bpwData||[]).concat(bcmData||[]);
+
+      orders = data
+        .filter(tx => tx.operation === 'tokens_transfer' && tx.to === ADMIN_USER && tx.memo && tx.memo.includes('BoCrypto Shop:'))
+        .map(tx => ({
+          id: tx.trx_id || (tx.timestamp + '_' + tx.from),
+          buyer: tx.from,
+          memo: tx.memo,
+          paid: parseFloat(tx.quantity),
+          symbol: tx.symbol,
+          timestamp: tx.timestamp,
+          parsed: parseMemo(tx.memo)
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp);
+
+      renderOrders();
+      updateStats();
+    } catch(e) {
+      document.getElementById('ordersBody').innerHTML='<tr><td colspan="7" class="loading-state" style="color:var(--red)">Error loading orders. Try refresh.</td></tr>';
+    }
+  }
+
+    function parseMemo(memo) {
+    // Memo format: "BoCrypto Shop: Buy X TOKEN (Y units)"
+    try {
+      const match = memo.match(/Buy (.+?) \((\d+) units?\)/i);
+      if (match) return { amount: match[1], units: match[2] };
+    } catch(e) {}
+    return { amount: '?', units: '?' };
+  }
+
+  function renderOrders() {
+    const tbody = document.getElementById('ordersBody');
+    if (!orders.length) {
+      tbody.innerHTML='<tr><td colspan="7" class="empty-state">No orders yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = orders.map(o => {
+      const delivered = deliveredTxIds.has(o.id);
+      const date = new Date(o.timestamp*1000).toLocaleDateString('sr-RS',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const tokenSymbol = o.parsed.amount.split(' ').pop();
+      return `
+        <tr>
+          <td><div class="buyer-name">@${o.buyer}</div></td>
+          <td><span class="token-tag">${tokenSymbol}</span></td>
+          <td><div class="amount-val">${o.parsed.amount}</div></td>
+          <td><div class="paid-val">${o.paid.toLocaleString()} ${o.symbol}</div></td>
+          <td><div class="date-val">${date}</div></td>
+          <td><span class="status-badge ${delivered?'sent':'pending'}">${delivered?'✓ SENT':'PENDING'}</span></td>
+          <td>
+            ${delivered
+              ? '<span class="sent-label">✓ Done</span>'
+              : `<button class="send-btn" onclick="sendTokens('${o.id}','${o.buyer}','${o.parsed.amount}')" id="sbtn-${o.id.replace(/[^a-z0-9]/gi,'_')}">SEND TOKENS</button>`
+            }
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function updateStats() {
+    const total = orders.length;
+    const delivered = orders.filter(o=>deliveredTxIds.has(o.id)).length;
+    const pending = total - delivered;
+    // Prihod u BoCrypto ekvivalentu (konvertuje BPW/BCM uplate)
+    const income = orders.reduce((s,o)=>s + toBoCrypto(o.paid, o.symbol), 0);
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('statDelivered').textContent = delivered;
+    document.getElementById('statIncome').textContent = Math.round(income).toLocaleString();
+  }
+
+  // ── SEND TOKENS ──
+  function sendTokens(orderId, buyer, amountStr) {
+    // amountStr like "0.00000001 SWAP.BTC"
+    const parts = amountStr.trim().split(' ');
+    const amount = parts[0];
+    const symbol = parts.slice(1).join(' ');
+    const safeId = orderId.replace(/[^a-z0-9]/gi,'_');
+    const btn = document.getElementById('sbtn-'+safeId);
+
+    if (!btn) return;
+    if (typeof window.hive_keychain === 'undefined') { alert('Hive Keychain not detected!'); return; }
+
+    btn.disabled=true; btn.textContent='Sending...';
+
+    const memo = 'BoCrypto Shop delivery for order ' + orderId.slice(0,12);
+
+    const jsonPayload = JSON.stringify({
+      contractName: 'tokens',
+      contractAction: 'transfer',
+      contractPayload: {
+        symbol: symbol,
+        to: buyer,
+        quantity: parseFloat(amount).toFixed(8),
+        memo: memo
+      }
+    });
+
+    window.hive_keychain.requestCustomJson(
+      ADMIN_USER, 'ssc-mainnet-hive', 'Active', jsonPayload, 'BoCrypto Shop — Send Tokens',
+      function(response) {
+        if (response.success) {
+          deliveredTxIds.add(orderId);
+          localStorage.setItem('bo_delivered_v2', JSON.stringify([...deliveredTxIds]));
+          renderOrders();
+          updateStats();
+        } else {
+          btn.disabled=false;
+          btn.textContent='SEND TOKENS';
+          alert('Failed: ' + (response.message||'Unknown error'));
+        }
+      }
+    );
+  }
+
+  // ── SUPPLY ──
+  function renderSupply() {
+    const grid = document.getElementById('supplyGrid');
+    grid.innerHTML = TOKENS.map(t => {
+      const pct = Math.round((t.totalSupply / t.totalSupply) * 100);
+      return `
+        <div class="supply-card">
+          <div class="supply-symbol">${t.symbol}</div>
+          <div class="supply-bar-wrap"><div class="supply-bar-fill" style="width:100%"></div></div>
+          <div class="supply-nums">
+            <span>Remaining: ${t.totalSupply.toLocaleString()}</span>
+            <span>Total: ${t.totalSupply.toLocaleString()}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  // ── MONTHLY RESET ──
+  // Uses custom_json with Posting key — stored on Hive blockchain, readable by leaderboard
+  function resetMonthly() {
+    if (!confirm('Reset monthly leaderboard? This cannot be undone.')) return;
+    if (typeof window.hive_keychain === 'undefined') { alert('Keychain not detected!'); return; }
+
+    const resetTs = Math.floor(Date.now() / 1000);
+    const resetJson = JSON.stringify({
+      app: 'bocrypto',
+      action: 'monthly_reset',
+      ts: resetTs,
+      month: new Date().getMonth() + 1,
+      year: new Date().getFullYear()
+    });
+
+    window.hive_keychain.requestCustomJson(
+      ADMIN_USER,
+      'bocrypto-reset',
+      'Posting',
+      resetJson,
+      'BoCrypto Monthly Reset',
+      function(response) {
+        if (response.success) {
+          alert('Monthly leaderboard reset successfully!');
+        } else {
+          alert('Failed: ' + (response.message || 'Unknown error'));
+        }
+      }
+    );
+  }
+
+</script>
+</body>
+</html>

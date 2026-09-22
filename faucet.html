@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoCrypto — BPW Faucet</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --red: #e63946;
+    --red-dark: #c1121f;
+    --gold: #ffd60a;
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #7a7a9a;
+    --green: #50c878;
+  }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(230,57,70,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,57,70,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridMove 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(40px); }
+  }
+
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 { width: 500px; height: 500px; background: rgba(230,57,70,0.06); top: -150px; left: -150px; animation: float1 10s ease-in-out infinite; }
+  .orb-2 { width: 400px; height: 400px; background: rgba(255,214,10,0.04); bottom: -100px; right: -100px; animation: float2 12s ease-in-out infinite; }
+
+  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,40px)} }
+  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,-30px)} }
+
+  /* HEADER */
+  .header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.8);
+    backdrop-filter: blur(10px);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .logo-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--red) 0%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+
+  .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .nav-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    background: none;
+  }
+
+  .nav-btn:hover { border-color: var(--red); color: var(--red); }
+  .nav-btn.active { background: linear-gradient(135deg, var(--red-dark), var(--red)); border: none; color: white; }
+
+  /* LOGIN OVERLAY */
+  #loginOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.95);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .login-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), var(--gold), transparent);
+  }
+
+  .login-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .login-sub {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 28px;
+    letter-spacing: 1px;
+  }
+
+  .input-label {
+    display: block;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .input-wrap { position: relative; margin-bottom: 20px; }
+
+  .input-wrap::before {
+    content: '@';
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--red);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+  }
+
+  input[type=text] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px 14px 38px;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  input[type=text]:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
+  }
+
+  input[type=text]::placeholder { color: var(--text-dim); font-size: 0.95rem; }
+
+  .btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--red-dark), var(--red));
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.4s;
+  }
+
+  .btn:hover::before { left: 100%; }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(230,57,70,0.4); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .status {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .status.error { display: block; background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: #ff6b78; }
+  .status.info { display: block; background: rgba(255,214,10,0.08); border: 1px solid rgba(255,214,10,0.2); color: var(--gold); }
+  .status.success { display: block; background: rgba(80,200,120,0.1); border: 1px solid rgba(80,200,120,0.3); color: var(--green); }
+
+  .keychain-note { text-align: center; margin-top: 20px; font-size: 0.8rem; color: var(--text-dim); letter-spacing: 1px; }
+  .keychain-note a { color: var(--red); text-decoration: none; }
+
+  /* MAIN */
+  #faucetMain {
+    display: none;
+    position: relative;
+    z-index: 10;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  .hero { text-align: center; margin-bottom: 40px; animation: fadeDown 0.6s ease both; }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(230,57,70,0.1);
+    border: 1px solid rgba(230,57,70,0.3);
+    color: var(--red);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    padding: 5px 16px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .hero-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 2.8rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--red), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    line-height: 1.1;
+  }
+  .hero-sub { font-size: 1rem; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 28px; }
+  .hero-stats { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; }
+  .hstat { text-align: center; }
+  .hstat-val { font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 900; color: var(--gold); }
+  .hstat-label { font-size: 0.72rem; color: var(--text-dim); letter-spacing: 1px; margin-top: 2px; }
+
+  /* FAUCET CARD */
+  .faucet-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .faucet-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), var(--gold), transparent);
+  }
+
+  .faucet-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .user-av {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--red), var(--gold));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .user-name { font-family: 'Orbitron', monospace; font-size: 1rem; color: var(--text); }
+
+  .logout-btn {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .reward-box {
+    background: var(--surface2);
+    border: 1px solid rgba(230,57,70,0.2);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .reward-amount { font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 900; color: var(--gold); }
+
+  .balance-display { font-size: 1rem; color: var(--text); margin-top: 8px; }
+  .balance-display span { color: var(--red); font-weight: bold; }
+
+  .progress-bar { background: var(--surface2); border-radius: 10px; height: 12px; margin: 16px 0; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill {
+    background: linear-gradient(90deg, var(--red), var(--gold));
+    width: 0%;
+    height: 100%;
+    transition: width 0.3s;
+  }
+
+  .withdraw-note { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 16px; }
+
+  .btn-claim {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--red-dark), var(--red));
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+  }
+
+  .btn-claim:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-withdraw {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--gold), #b8860b);
+    border: none;
+    border-radius: 8px;
+    color: var(--bg);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-withdraw:disabled { opacity: 0.4; cursor: not-allowed; background: var(--text-dim); }
+
+  .countdown-wrap { text-align: center; margin-top: 12px; }
+  .countdown { font-family: 'Orbitron', monospace; font-size: 1.2rem; font-weight: 700; color: var(--gold); }
+
+  /* LEADERBOARD CARD */
+  .lb-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  .lb-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .lb-row:last-child { border-bottom: none; }
+
+  .lb-rank { font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 900; width: 30px; }
+  .lb-rank.r1 { color: var(--gold); }
+  .lb-rank.r2 { color: #c0c0c0; }
+  .lb-rank.r3 { color: #cd7f32; }
+  .lb-name { flex: 1; font-size: 0.9rem; }
+  .lb-amount { font-family: 'Orbitron', monospace; color: var(--gold); }
+
+  .footer { text-align: center; padding: 24px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-dim); position: relative; z-index: 10; }
+
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  @media(max-width:600px) {
+    .header { padding: 16px 20px; }
+    .hero-title { font-size: 1.8rem; }
+    .faucet-card { padding: 28px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <a href="index.html" class="logo-text">BoCrypto</a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-btn">Dashboard</a>
+    <a href="shop.html" class="nav-btn">Shop</a>
+    <a href="dungeon.html" class="nav-btn">Dungeon</a>
+    <a href="leaderboard.html" class="nav-btn">Leaderboard</a>
+    <span class="nav-btn active">Faucet</span>
+  </div>
+</div>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-title">Connect Wallet</div>
+    <div class="login-sub">Login to claim your free BPW tokens</div>
+    <label class="input-label" for="username">Hive Username</label>
+    <div class="input-wrap">
+      <input type="text" id="username" placeholder="your-hive-username" autocomplete="off" />
+    </div>
+    <button class="btn" id="loginBtn" onclick="loginWithKeychain()">Login with Keychain</button>
+    <div class="status" id="loginStatus"></div>
+    <div class="keychain-note">Need Keychain? <a href="https://hive-keychain.com" target="_blank">Download here</a></div>
+  </div>
+</div>
+
+<!-- FAUCET MAIN -->
+<div id="faucetMain">
+  <div class="hero">
+    <div class="hero-badge">⚡ FREE BPW TOKENS</div>
+    <div class="hero-title">BPW FAUCET</div>
+    <div class="hero-sub">Claim 5 satoshi BPW every 12 hours</div>
+    <div class="hero-stats">
+      <div class="hstat"><div class="hstat-val">5</div><div class="hstat-label">Satoshi / claim</div></div>
+      <div class="hstat"><div class="hstat-val">12h</div><div class="hstat-label">Cooldown</div></div>
+      <div class="hstat"><div class="hstat-val">250</div><div class="hstat-label">Min withdraw</div></div>
+    </div>
+  </div>
+
+  <div class="faucet-card">
+    <div class="faucet-title">⚡ Claim Your BPW Tokens</div>
+    <div id="claimSection">
+      <div class="user-info">
+        <div class="user-av" id="userAv">?</div>
+        <div>
+          <div class="user-name" id="userName">—</div>
+        </div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+      <div class="reward-box">
+        <div class="reward-amount">5 SATOSHI BPW</div>
+        <div class="balance-display">Your balance: <span id="userBalance">0</span> / 250 satoshi</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="withdraw-note">💰 Minimum 250 satoshi BPW za isplatu + 1 BoCrypto fee</div>
+      </div>
+      <button class="btn-claim" id="claimBtn" onclick="doClaim()">⚡ CLAIM NOW</button>
+      <div class="countdown-wrap" id="countdownWrap" style="display:none;"><div class="countdown" id="countdown">11:59:59</div></div>
+      <button class="btn-withdraw" id="withdrawBtn" onclick="doWithdraw()" disabled>💸 WITHDRAW (1 BoCrypto fee)</button>
+      <div class="status" id="claimStatus"></div>
+    </div>
+  </div>
+
+  <div class="lb-card">
+    <div class="lb-title">🏆 Top 10 BPW Satoshi Owners (Blockchain)</div>
+    <div id="leaderboard"><div style="text-align:center;padding:20px;color:var(--text-dim);">Loading...</div></div>
+  </div>
+</div>
+
+<div class="footer">BPW Faucet — Part of <a href="index.html" style="color:var(--red);text-decoration:none;">BoCrypto Ecosystem</a></div>
+
+<script>
+  const SHOP_OWNER = 'bokica80';
+  const COOLDOWN_MS = 12 * 60 * 60 * 1000;
+  const MIN_WITHDRAW = 250;
+  const CLAIM_AMOUNT = 5;
+
+  let currentUser = null;
+  let countdownInterval = null;
+
+  // ── STORAGE HELPERS ──
+  function getBalance(username) { return parseInt(localStorage.getItem('bpw_balance_' + username) || '0'); }
+  function setBalance(username, amount) { localStorage.setItem('bpw_balance_' + username, amount.toString()); }
+  function getLastClaim(username) { return parseInt(localStorage.getItem('bpw_lastclaim_' + username) || '0'); }
+  function setLastClaim(username) { localStorage.setItem('bpw_lastclaim_' + username, Date.now().toString()); }
+  function canClaim(username) { return (Date.now() - getLastClaim(username)) >= COOLDOWN_MS; }
+  function timeUntilClaim(username) { return Math.max(0, COOLDOWN_MS - (Date.now() - getLastClaim(username))); }
+
+  // ── AUTO-LOGIN ──
+  window.addEventListener('load', function() {
+    const saved = sessionStorage.getItem('bocrypto_user');
+    if (saved) { currentUser = saved; showClaim(saved); }
+    loadLeaderboard();
+  });
+
+  // ── LOGIN ──
+  function showLoginStatus(msg, type) {
+    const el = document.getElementById('loginStatus');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  function loginWithKeychain() {
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    if (!username) { showLoginStatus('Unesite svoje Hive korisničko ime.', 'error'); return; }
+    if (typeof window.hive_keychain === 'undefined') {
+      showLoginStatus('Hive Keychain nije detektovan. Instalirajte browser ekstenziju.', 'error');
+      return;
+    }
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+    showLoginStatus('Waiting for Keychain confirmation...', 'info');
+
+    window.hive_keychain.requestSignBuffer(username, 'BoCrypto Faucet Login ' + Date.now(), 'Posting', function(response) {
+      btn.disabled = false;
+      btn.textContent = 'Login with Keychain';
+      if (response.success) {
+        currentUser = username;
+        sessionStorage.setItem('bocrypto_user', username);
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('faucetMain').style.display = 'block';
+        showClaim(username);
+      } else {
+        showLoginStatus(response.message || 'Login cancelled or failed.', 'error');
+      }
+    });
+  }
+
+  document.getElementById('username').addEventListener('keydown', function(e) { if (e.key === 'Enter') loginWithKeychain(); });
+
+  function logout() {
+    currentUser = null;
+    sessionStorage.removeItem('bocrypto_user');
+    if (countdownInterval) clearInterval(countdownInterval);
+    document.getElementById('faucetMain').style.display = 'none';
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('username').value = '';
+    document.getElementById('loginStatus').className = 'status';
+  }
+
+  // ── CLAIM UI ──
+  function showClaim(username) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('faucetMain').style.display = 'block';
+    document.getElementById('userAv').textContent = username[0].toUpperCase();
+    document.getElementById('userName').textContent = '@' + username;
+    updateUI(username);
+    loadLeaderboard();
+  }
+
+  function updateUI(username) {
+    const balance = getBalance(username);
+    const pct = (balance / MIN_WITHDRAW) * 100;
+    document.getElementById('userBalance').textContent = balance;
+    document.getElementById('progressFill').style.width = Math.min(pct, 100) + '%';
+    document.getElementById('withdrawBtn').disabled = (balance < MIN_WITHDRAW);
+
+    const btn = document.getElementById('claimBtn');
+    const cwrap = document.getElementById('countdownWrap');
+    if (canClaim(username)) {
+      btn.disabled = false;
+      btn.textContent = '⚡ CLAIM NOW';
+      cwrap.style.display = 'none';
+      if (countdownInterval) clearInterval(countdownInterval);
+    } else {
+      btn.disabled = true;
+      btn.textContent = '✓ CLAIMED';
+      cwrap.style.display = 'block';
+      startCountdown(username);
+    }
+  }
+
+  function startCountdown(username) {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = setInterval(function() {
+      const remaining = timeUntilClaim(username);
+      if (remaining <= 0) {
+        clearInterval(countdownInterval);
+        updateUI(username);
+        return;
+      }
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      document.getElementById('countdown').textContent =
+        String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }, 1000);
+  }
+
+  // ── CLAIM ──
+  function doClaim() {
+    if (!currentUser) return;
+    if (!canClaim(currentUser)) {
+      showClaimStatus('Već si klaimovao. Vrati se za 12 sati!', 'error');
+      return;
+    }
+    const btn = document.getElementById('claimBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    setTimeout(function() {
+      const bal = getBalance(currentUser) + CLAIM_AMOUNT;
+      setBalance(currentUser, bal);
+      setLastClaim(currentUser);
+      updateUI(currentUser);
+      btn.disabled = false;
+      btn.textContent = '⚡ CLAIM NOW';
+      showClaimStatus('✓ Klaimovano! +' + CLAIM_AMOUNT + ' satoshi BPW', 'success');
+      setTimeout(function() { document.getElementById('claimStatus').className = 'status'; }, 3000);
+    }, 500);
+  }
+
+  // ── WITHDRAW ──
+  function doWithdraw() {
+    if (!currentUser) return;
+    const balance = getBalance(currentUser);
+    if (balance < MIN_WITHDRAW) {
+      showClaimStatus('Treba ti minimum ' + MIN_WITHDRAW + ' satoshi BPW za isplatu.', 'error');
+      return;
+    }
+    if (typeof window.hive_keychain === 'undefined') {
+      showClaimStatus('Hive Keychain nije detektovan.', 'error');
+      return;
+    }
+    const btn = document.getElementById('withdrawBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    const memo = 'BPW_WITHDRAW:' + currentUser + ':' + MIN_WITHDRAW;
+    const json = JSON.stringify({
+      contractName: 'tokens',
+      contractAction: 'transfer',
+      contractPayload: { symbol: 'BOCRYPTO', to: SHOP_OWNER, quantity: '1', memo: memo }
+    });
+
+    window.hive_keychain.requestCustomJson(currentUser, 'ssc-mainnet-hive', 'Active', json, 'BPW Withdraw Fee (1 BoCrypto)', function(response) {
+      btn.disabled = false;
+      btn.textContent = '💸 WITHDRAW (1 BoCrypto fee)';
+      if (response.success) {
+        showClaimStatus('✓ Zahtev za isplatu poslat! Admin će ti poslati BPW uskoro.', 'success');
+        setTimeout(function() { document.getElementById('claimStatus').className = 'status'; }, 4000);
+      } else {
+        showClaimStatus(response.message || 'Transakcija neuspešna.', 'error');
+      }
+    });
+  }
+
+  function showClaimStatus(msg, type) {
+    const el = document.getElementById('claimStatus');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  // ── LEADERBOARD ──
+  async function loadLeaderboard() {
+    try {
+      const res = await fetch('https://api.hive-engine.com/rpc/contracts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1, method: 'find',
+          params: { contract: 'tokens', table: 'balances', query: { symbol: 'BPW' }, limit: 500, offset: 0 }
+        })
+      });
+      const data = await res.json();
+      const holders = (data && data.result) || [];
+      const withSatoshi = holders.map(h => ({ account: h.account, satoshi: Math.floor((parseFloat(h.balance) || 0) * 100000000) }));
+      const sorted = withSatoshi.filter(h => h.satoshi > 0).sort((a, b) => b.satoshi - a.satoshi).slice(0, 10);
+      const el = document.getElementById('leaderboard');
+      if (!sorted.length) {
+        el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);">No BPW holders yet.</div>';
+        return;
+      }
+      el.innerHTML = sorted.map((entry, i) => {
+        const rankClass = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
+        const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
+        return `
+          <div class="lb-row">
+            <div class="lb-rank ${rankClass}">${rankEmoji}</div>
+            <div class="lb-name">@${entry.account}</div>
+            <div class="lb-amount">${entry.satoshi.toLocaleString()} satoshi</div>
+          </div>`;
+      }).join('');
+    } catch(e) {
+      document.getElementById('leaderboard').innerHTML = '<div style="text-align:center;padding:20px;color:var(--red);">Error loading leaderboard</div>';
+    }
+  }
+</script>
+</body>
+</html>

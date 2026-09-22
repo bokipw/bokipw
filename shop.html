@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoCrypto — Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --red: #e63946;
+    --red-dark: #c1121f;
+    --gold: #ffd60a;
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #7a7a9a;
+  }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(230,57,70,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,57,70,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridMove 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(40px); }
+  }
+
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 { width: 400px; height: 400px; background: rgba(230,57,70,0.08); top: -100px; left: -100px; animation: float1 8s ease-in-out infinite; }
+  .orb-2 { width: 300px; height: 300px; background: rgba(255,214,10,0.05); bottom: -50px; right: -50px; animation: float2 10s ease-in-out infinite; }
+
+  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,30px)} }
+  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-20px)} }
+
+  /* HEADER */
+  .header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.8);
+    backdrop-filter: blur(10px);
+  }
+
+  .logo-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--red) 0%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 8px;
+  }
+
+  .nav-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .nav-btn.active {
+    background: linear-gradient(135deg, var(--red-dark), var(--red));
+    border: none;
+    color: white;
+  }
+
+  .nav-btn.outline {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  .nav-btn.outline:hover { border-color: var(--red); color: var(--red); }
+
+  /* LOGIN OVERLAY */
+  #loginOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.95);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .login-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), var(--gold), transparent);
+  }
+
+  .login-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .login-sub {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 28px;
+    letter-spacing: 1px;
+  }
+
+  .input-label {
+    display: block;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .input-wrap { position: relative; margin-bottom: 20px; }
+
+  .input-wrap::before {
+    content: '@';
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--red);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+  }
+
+  input[type=text] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px 14px 38px;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  input[type=text]:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
+  }
+
+  input[type=text]::placeholder { color: var(--text-dim); font-size: 0.95rem; }
+
+  .btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--red-dark), var(--red));
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.4s;
+  }
+
+  .btn:hover::before { left: 100%; }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(230,57,70,0.4); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .status {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .status.error { display: block; background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: #ff6b78; }
+  .status.info { display: block; background: rgba(255,214,10,0.08); border: 1px solid rgba(255,214,10,0.2); color: var(--gold); }
+  .status.success { display: block; background: rgba(50,200,100,0.1); border: 1px solid rgba(50,200,100,0.3); color: #50c878; }
+
+  .keychain-note { text-align: center; margin-top: 20px; font-size: 0.8rem; color: var(--text-dim); letter-spacing: 1px; }
+  .keychain-note a { color: var(--red); text-decoration: none; }
+
+  /* MAIN SHOP */
+  #shopMain {
+    display: none;
+    position: relative;
+    z-index: 10;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  .shop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .shop-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--red), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 8px 16px 8px 8px;
+  }
+
+  .user-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--red), var(--gold));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    font-weight: 900;
+    color: white;
+  }
+
+  .user-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+  }
+
+  .bocrypto-balance {
+    font-size: 0.8rem;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 4px;
+  }
+
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* SHOP GRID */
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .token-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .token-card:hover {
+    border-color: var(--red);
+    transform: translateY(-4px);
+  }
+
+  .token-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), var(--gold), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .token-card:hover::before { opacity: 1; }
+
+  .token-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .token-symbol-big {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--text);
+    letter-spacing: 2px;
+  }
+
+  .token-badge {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(230,57,70,0.15);
+    border: 1px solid rgba(230,57,70,0.3);
+    color: var(--red);
+  }
+
+  .token-badge.sold-out {
+    background: rgba(100,100,100,0.15);
+    border-color: rgba(100,100,100,0.3);
+    color: var(--text-dim);
+  }
+
+  .price-row {
+    margin-bottom: 6px;
+  }
+
+  .price-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .price-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .supply-row {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .supply-label { font-size: 0.75rem; color: var(--text-dim); letter-spacing: 1px; }
+  .supply-value { font-family: 'Orbitron', monospace; font-size: 0.85rem; color: var(--text); }
+
+  .supply-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .supply-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--red), var(--gold));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* BUY SECTION */
+  .buy-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .buy-label { font-size: 0.75rem; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+
+  .buy-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .qty-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 0;
+  }
+
+  .qty-input:focus { border-color: var(--red); }
+
+  .buy-btn {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--red-dark), var(--red));
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .buy-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(230,57,70,0.4); }
+  .buy-btn:active { transform: translateY(0); }
+  .buy-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .cost-preview {
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    min-height: 20px;
+  }
+
+  .cost-preview span { color: var(--gold); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.9);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 460px;
+    width: 90%;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), var(--gold), transparent);
+  }
+
+  .modal-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+
+  .modal-sub { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 24px; letter-spacing: 1px; }
+
+  .modal-detail {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .modal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 0.9rem;
+  }
+
+  .modal-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+  .modal-row .label { color: var(--text-dim); letter-spacing: 1px; }
+  .modal-row .value { font-family: 'Orbitron', monospace; font-size: 0.85rem; }
+  .modal-row .value.gold { color: var(--gold); }
+  .modal-row .value.red { color: var(--red); }
+
+  .modal-buttons { display: flex; gap: 12px; }
+
+  .modal-cancel {
+    flex: 1;
+    padding: 14px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .modal-cancel:hover { border-color: var(--red); color: var(--red); }
+
+  .modal-confirm {
+    flex: 2;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--red-dark), var(--red));
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .modal-confirm:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(230,57,70,0.4); }
+  .modal-confirm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .modal-status { margin-top: 16px; }
+
+  /* PAY TOKEN SELECTOR */
+  .pay-selector { display: flex; gap: 8px; margin-top: 14px; }
+  .pay-opt {
+    flex: 1;
+    padding: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .pay-opt:hover { border-color: var(--red); color: var(--text); }
+  .pay-opt.active {
+    background: linear-gradient(135deg, var(--red-dark), var(--red));
+    border-color: var(--red);
+    color: white;
+  }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  @media (max-width: 600px) {
+    .header { padding: 16px 20px; }
+    .shop-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <a href="index.html" class="logo-text">BoCrypto</a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-btn outline">Dashboard</a>
+    <span class="nav-btn active">Shop</span>
+    <a href="leaderboard.html" class="nav-btn outline">Leaderboard</a>
+    <a href="dungeon.html" class="nav-btn outline">Dungeon</a>
+    <a href="faucet.html" class="nav-btn outline">Faucet</a>
+  </div>
+</div>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-title">Connect Wallet</div>
+    <div class="login-sub">Login to access the shop</div>
+    <label class="input-label" for="username">Hive Username</label>
+    <div class="input-wrap">
+      <input type="text" id="username" placeholder="your-hive-username" autocomplete="off" />
+    </div>
+    <button class="btn" id="loginBtn" onclick="loginWithKeychain()">Login with Keychain</button>
+    <div class="status" id="loginStatus"></div>
+    <div class="keychain-note">Need Keychain? <a href="https://hive-keychain.com" target="_blank">Download here</a></div>
+  </div>
+</div>
+
+<!-- SHOP MAIN -->
+<div id="shopMain">
+  <div class="shop-header">
+    <div>
+      <div class="shop-title">TOKEN SHOP</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);letter-spacing:2px;margin-top:4px;">BoCrypto Marketplace</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div class="user-pill">
+        <div class="user-avatar" id="avatarEl">?</div>
+        <div>
+          <div class="user-name" id="displayName">...</div>
+          <div class="bocrypto-balance" id="boBalance">BoCrypto: ...</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="shop-grid" id="shopGrid"></div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">CONFIRM PURCHASE</div>
+    <div class="modal-sub">Review your order before confirming</div>
+    <div class="modal-detail">
+      <div class="modal-row">
+        <span class="label">TOKEN</span>
+        <span class="value" id="mToken">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="label">AMOUNT</span>
+        <span class="value gold" id="mAmount">—</span>
+      </div>
+      <div class="modal-row">
+        <span class="label">YOU PAY</span>
+        <span class="value red" id="mCost">—</span>
+      </div>
+      <div class="modal-row" style="flex-direction:column;align-items:stretch;">
+        <span class="label" style="margin-bottom:8px;">PAY WITH</span>
+        <div class="pay-selector" id="paySelector">
+          <button class="pay-opt active" data-token="BOCRYPTO" onclick="selectPayToken('BOCRYPTO')">BOCRYPTO</button>
+          <button class="pay-opt" data-token="BPW" onclick="selectPayToken('BPW')">BPW</button>
+          <button class="pay-opt" data-token="BCM" onclick="selectPayToken('BCM')">BCM</button>
+        </div>
+      </div>
+      <div class="modal-row">
+        <span class="label">YOUR BALANCE</span>
+        <span class="value" id="mBalance">—</span>
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="modal-cancel" onclick="closeModal()">CANCEL</button>
+      <button class="modal-confirm" id="confirmBtn" onclick="confirmPurchase()">CONFIRM & PAY</button>
+    </div>
+    <div class="modal-status">
+      <div class="status" id="modalStatus"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────────────────────────────
+  const SHOP_OWNER = 'bokica80';
+  const PAYMENT_TOKENS = ['BOCRYPTO', 'BPW', 'BCM'];
+
+  // Koliko BoCrypto vredi 1 satuši payment tokena (za konverziju cene)
+  // BOCRYPTO: 1 BoCrypto = 1 BOCRYPTO | BPW: 1 satoshi = 500 BoCrypto | BCM: 1 BCM = 1,000,000 BoCrypto
+  const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 500, BCM: 1000000 };
+  // Koliko celih tokena (unit-a) vredi 1 satoshi datog tokena
+  const SATOSHI_TO_UNIT = { BOCRYPTO: 1, BPW: 0.00000001, BCM: 1 };
+  // Koliko decimala koristi svaki payment token pri slanju
+  const PAYMENT_DECIMALS = { BOCRYPTO: 3, BPW: 8, BCM: 3 };
+
+  let pendingPayToken = 'BOCRYPTO';
+
+  // Konvertuje BoCrypto cenu u količinu payment tokena (u unit-ima, spremna za slanje)
+  function paymentQty(totalCost, sym) {
+    return totalCost / PAYMENT_RATES[sym] * SATOSHI_TO_UNIT[sym];
+  }
+
+  // Token catalog — sorted most expensive to cheapest
+  const TOKENS = [
+    {
+      symbol: 'BCM',
+      name: 'BCM Token',
+      pricePerUnit: 1000000,      // BoCrypto per 1 BCM
+      unitSize: 1,                // how many tokens per purchase unit
+      unitLabel: '1 BCM',
+      totalSupply: 867,
+      remaining: 867,
+      decimals: 3
+    },
+    {
+      symbol: 'SWAP.BTC',
+      name: 'Swap Bitcoin',
+      pricePerUnit: 1000,         // BoCrypto per 1 satoshi
+      unitSize: 0.00000001,
+      unitLabel: '1 satoshi BTC',
+      totalSupply: 250,           // in satoshis
+      remaining: 250,
+      decimals: 8
+    },
+    {
+      symbol: 'SIM',
+      name: 'SIM Token',
+      pricePerUnit: 10000,        // BoCrypto per 1000 SIM
+      unitSize: 1000,
+      unitLabel: '1,000 SIM',
+      totalSupply: 100,           // in units of 1000
+      remaining: 100,
+      decimals: 3
+    },
+    {
+      symbol: 'BPW',
+      name: 'BPW Token',
+      pricePerUnit: 500,          // BoCrypto per 1 satoshi BPW
+      unitSize: 0.00000001,
+      unitLabel: '1 satoshi BPW',
+      totalSupply: 100000000,     // 1 BPW in satoshis
+      remaining: 100000000,
+      decimals: 8
+    },
+    {
+      symbol: 'SWAP.ETH',
+      name: 'Swap Ethereum',
+      pricePerUnit: 250,          // BoCrypto per 1 satoshi ETH
+      unitSize: 0.00000001,
+      unitLabel: '1 satoshi ETH',
+      totalSupply: 3847,          // in satoshis
+      remaining: 3847,
+      decimals: 8
+    },
+    {
+      symbol: 'SPT',
+      name: 'Splintertalk',
+      pricePerUnit: 1000,         // BoCrypto per 100 SPT
+      unitSize: 100,
+      unitLabel: '100 SPT',
+      totalSupply: 200,           // in units of 100
+      remaining: 200,
+      decimals: 3
+    },
+    {
+      symbol: 'PEPE',
+      name: 'PEPE Token',
+      pricePerUnit: 1000,         // BoCrypto per 1000 PEPE
+      unitSize: 1000,
+      unitLabel: '1,000 PEPE',
+      totalSupply: 1000,          // in units of 1000
+      remaining: 1000,
+      decimals: 3
+    }
+  ];
+
+  // ─── STATE ────────────────────────────────────────────────────────────────
+  let currentUser = null;
+  let userBalances = {};
+  let pendingPurchase = null;
+
+  // ─── LOAD SUPPLY FROM LOCALSTORAGE ───────────────────────────────────────
+  function loadSupply() {
+    const saved = localStorage.getItem('bo_supply');
+    if (saved) {
+      const supplyData = JSON.parse(saved);
+      TOKENS.forEach(t => {
+        if (supplyData[t.symbol] !== undefined) {
+          t.remaining = supplyData[t.symbol];
+        }
+      });
+    }
+  }
+
+  function saveSupply() {
+    const supplyData = {};
+    TOKENS.forEach(t => { supplyData[t.symbol] = t.remaining; });
+    localStorage.setItem('bo_supply', JSON.stringify(supplyData));
+  }
+
+  // ─── AUTO-LOGIN ───────────────────────────────────────────────────────────
+  window.addEventListener('load', function() {
+    loadSupply();
+    const saved = sessionStorage.getItem('bocrypto_user');
+    if (saved) {
+      currentUser = saved;
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('shopMain').style.display = 'block';
+      document.getElementById('avatarEl').textContent = saved[0].toUpperCase();
+      document.getElementById('displayName').textContent = '@' + saved;
+      loadUserBalances(saved);
+      renderShop();
+    }
+  });
+
+  // ─── LOGIN ────────────────────────────────────────────────────────────────
+  function showLoginStatus(msg, type) {
+    const el = document.getElementById('loginStatus');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  async function loginWithKeychain() {
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    if (!username) { showLoginStatus('Please enter your Hive username.', 'error'); return; }
+    if (typeof window.hive_keychain === 'undefined') {
+      showLoginStatus('Hive Keychain not detected. Please install the browser extension.', 'error');
+      return;
+    }
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+    showLoginStatus('Waiting for Keychain confirmation...', 'info');
+
+    window.hive_keychain.requestSignBuffer(username, `BoCrypto Shop Login - ${Date.now()}`, 'Posting', function(response) {
+      btn.disabled = false;
+      btn.textContent = 'Login with Keychain';
+      if (response.success) {
+        currentUser = username;
+        sessionStorage.setItem('bocrypto_user', username);
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('shopMain').style.display = 'block';
+        document.getElementById('avatarEl').textContent = username[0].toUpperCase();
+        document.getElementById('displayName').textContent = '@' + username;
+        loadUserBalances(username);
+        renderShop();
+      } else {
+        showLoginStatus(response.message || 'Login cancelled or failed.', 'error');
+      }
+    });
+  }
+
+  document.getElementById('username').addEventListener('keydown', e => { if (e.key === 'Enter') loginWithKeychain(); });
+
+  function logout() {
+    currentUser = null;
+    userBalances = {};
+    sessionStorage.removeItem('bocrypto_user');
+    document.getElementById('shopMain').style.display = 'none';
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('username').value = '';
+    document.getElementById('loginStatus').className = 'status';
+  }
+
+  // ─── BALANCES ─────────────────────────────────────────────────────────────
+  async function loadUserBalances(username) {
+    document.getElementById('boBalance').textContent = 'BoCrypto: Loading...';
+    try {
+      const res = await fetch('https://api.hive-engine.com/rpc/contracts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', method: 'find',
+          params: {
+            contract: 'tokens', table: 'balances',
+            query: { account: username, symbol: { '$in': ['BOCRYPTO', 'BPW', 'BCM'] } },
+            limit: 10, offset: 0
+          }, id: 1
+        })
+      });
+      const data = await res.json();
+      (data.result || []).forEach(b => { userBalances[b.symbol] = parseFloat(b.balance); });
+      const bo = userBalances['BOCRYPTO'] || 0;
+      document.getElementById('boBalance').textContent = `BoCrypto: ${bo.toLocaleString()}`;
+    } catch(e) {
+      document.getElementById('boBalance').textContent = 'BoCrypto: Error';
+    }
+  }
+
+  // ─── RENDER SHOP ──────────────────────────────────────────────────────────
+  function renderShop() {
+    const grid = document.getElementById('shopGrid');
+    grid.innerHTML = '';
+    TOKENS.forEach((token, idx) => {
+      const soldOut = token.remaining <= 0;
+      const supplyPct = token.totalSupply > 0 ? (token.remaining / token.totalSupply) * 100 : 0;
+
+      const card = document.createElement('div');
+      card.className = 'token-card';
+      card.style.animationDelay = (idx * 0.08) + 's';
+
+      card.innerHTML = `
+        <div class="token-card-header">
+          <div class="token-symbol-big">${token.symbol}</div>
+          <div class="token-badge ${soldOut ? 'sold-out' : ''}">${soldOut ? 'SOLD OUT' : 'AVAILABLE'}</div>
+        </div>
+        <div class="price-row">
+          <div class="price-label">Price per unit</div>
+          <div class="price-value">${token.pricePerUnit.toLocaleString()} BoCrypto</div>
+        </div>
+        <div class="price-row" style="margin-top:6px;">
+          <div class="price-label">Unit size</div>
+          <div class="price-value" style="color:var(--text);font-size:0.85rem;">${token.unitLabel}</div>
+        </div>
+        <div class="supply-row">
+          <span class="supply-label">Supply remaining</span>
+          <span class="supply-value">${token.remaining.toLocaleString()} / ${token.totalSupply.toLocaleString()}</span>
+        </div>
+        <div class="supply-bar"><div class="supply-fill" style="width:${supplyPct}%"></div></div>
+        ${!soldOut ? `
+        <div class="buy-section">
+          <div class="buy-label">Quantity (units)</div>
+          <div class="buy-row">
+            <input class="qty-input" type="number" id="qty-${idx}" min="1" max="${token.remaining}" placeholder="1" oninput="updateCost(${idx})"/>
+            <button class="buy-btn" onclick="openModal(${idx})">BUY</button>
+          </div>
+          <div class="cost-preview" id="cost-${idx}">Enter quantity to see total cost</div>
+        </div>` : ''}
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function updateCost(idx) {
+    const token = TOKENS[idx];
+    const qty = parseInt(document.getElementById(`qty-${idx}`).value) || 0;
+    const el = document.getElementById(`cost-${idx}`);
+    if (qty <= 0) { el.textContent = 'Enter quantity to see total cost'; return; }
+    if (qty > token.remaining) { el.innerHTML = `<span style="color:var(--red)">Exceeds available supply</span>`; return; }
+    const total = qty * token.pricePerUnit;
+    const tokenAmount = (qty * token.unitSize).toFixed(token.decimals);
+    el.innerHTML = `You receive: <span>${tokenAmount} ${token.symbol}</span> — You pay: <span>${total.toLocaleString()} BoCrypto</span>`;
+  }
+
+  // ─── MODAL ────────────────────────────────────────────────────────────────
+  function openModal(idx) {
+    const token = TOKENS[idx];
+    const qty = parseInt(document.getElementById(`qty-${idx}`).value) || 0;
+    if (qty <= 0) { alert('Please enter a quantity.'); return; }
+    if (qty > token.remaining) { alert('Exceeds available supply.'); return; }
+
+    const totalCost = qty * token.pricePerUnit;
+    const tokenAmount = (qty * token.unitSize).toFixed(token.decimals);
+
+    pendingPurchase = { token, qty, totalCost, tokenAmount };
+    pendingPayToken = 'BOCRYPTO';
+
+    document.getElementById('mToken').textContent = token.symbol;
+    document.getElementById('mAmount').textContent = `${tokenAmount} ${token.symbol}`;
+    updatePayUI();
+    document.getElementById('modalStatus').className = 'status';
+    document.getElementById('confirmBtn').disabled = false;
+    document.getElementById('confirmBtn').textContent = 'CONFIRM & PAY';
+
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+
+  function selectPayToken(sym) {
+    pendingPayToken = sym;
+    document.querySelectorAll('.pay-opt').forEach(b => {
+      b.classList.toggle('active', b.dataset.token === sym);
+    });
+    updatePayUI();
+  }
+
+  function updatePayUI() {
+    if (!pendingPurchase) return;
+    const totalCost = pendingPurchase.totalCost;
+    const sym = pendingPayToken;
+    const payQty = paymentQty(totalCost, sym);
+    const payQtyStr = payQty.toFixed(PAYMENT_DECIMALS[sym]);
+    const bal = userBalances[sym] || 0;
+
+    document.getElementById('mCost').textContent = `${payQtyStr} ${sym}`;
+    document.getElementById('mBalance').textContent = `${formatBalance(bal, sym)} ${sym}`;
+
+    const balEl = document.getElementById('mBalance');
+    if (bal < payQty) { balEl.style.color = 'var(--red)'; }
+    else { balEl.style.color = 'var(--text)'; }
+  }
+
+  function formatBalance(val, sym) {
+    const decimals = PAYMENT_DECIMALS[sym] || 3;
+    if (val === 0) return (0).toFixed(decimals);
+    const str = val.toFixed(decimals);
+    return str.length > 14 ? val.toExponential(6) : str;
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+    pendingPurchase = null;
+  }
+
+  function showModalStatus(msg, type) {
+    const el = document.getElementById('modalStatus');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  async function confirmPurchase() {
+    if (!pendingPurchase || !currentUser) return;
+
+    const { token, qty, totalCost, tokenAmount } = pendingPurchase;
+    const payToken = pendingPayToken;
+    const payQty = paymentQty(totalCost, payToken);
+    const payQtyStr = payQty.toFixed(PAYMENT_DECIMALS[payToken]);
+    const tokenBalance = userBalances[payToken] || 0;
+
+    if (tokenBalance < payQty) {
+      showModalStatus(`Insufficient ${payToken} balance. You need ${payQtyStr} but have ${formatBalance(tokenBalance, payToken)}.`, 'error');
+      return;
+    }
+
+    if (typeof window.hive_keychain === 'undefined') {
+      showModalStatus('Hive Keychain not detected.', 'error');
+      return;
+    }
+
+    document.getElementById('confirmBtn').disabled = true;
+    document.getElementById('confirmBtn').textContent = 'Processing...';
+    showModalStatus('Waiting for Keychain confirmation...', 'info');
+
+    const memo = `BoCrypto Shop: Buy ${tokenAmount} ${token.symbol} (${qty} units)`;
+
+    // Hive-Engine tokens must be sent via custom_json, not requestTransfer
+    const json = JSON.stringify({
+      contractName: 'tokens',
+      contractAction: 'transfer',
+      contractPayload: {
+        symbol: payToken,
+        to: SHOP_OWNER,
+        quantity: payQtyStr,
+        memo: memo
+      }
+    });
+
+    window.hive_keychain.requestCustomJson(
+      currentUser,
+      'ssc-mainnet-hive',
+      'Active',
+      json,
+      'BoCrypto Shop Purchase',
+      function(response) {
+        if (response.success) {
+          userBalances[payToken] = (userBalances[payToken] || 0) - payQty;
+          token.remaining = Math.max(0, token.remaining - qty);
+          saveSupply();
+
+          const boBalance = userBalances['BOCRYPTO'] || 0;
+          document.getElementById('boBalance').textContent = `BoCrypto: ${boBalance.toLocaleString()}`;
+          showModalStatus(`✓ Kupovina uspešna! Kupio si ${tokenAmount} ${token.symbol}. @${SHOP_OWNER} će ti poslati tokene uskoro.`, 'success');
+          document.getElementById('confirmBtn').textContent = 'DONE';
+
+          setTimeout(() => {
+            closeModal();
+            renderShop();
+          }, 3000);
+        } else {
+          showModalStatus(response.message || 'Transakcija otkazana ili neuspešna.', 'error');
+          document.getElementById('confirmBtn').disabled = false;
+          document.getElementById('confirmBtn').textContent = 'CONFIRM & PAY';
+        }
+      }
+    );
+  }
+</script>
+</body>
+</html>

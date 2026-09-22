@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoCrypto — Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --red:#e63946; --red-dark:#c1121f; --gold:#ffd60a; --bg:#0a0a0f; --surface:#12121a; --surface2:#1a1a26; --border:#2a2a3a; --text:#e8e8f0; --text-dim:#7a7a9a; --green:#50c878; --silver:#c0c0c0; --bronze:#cd7f32; }
+  body { font-family:'Rajdhani',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; position:relative; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(230,57,70,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(230,57,70,0.03) 1px,transparent 1px); background-size:40px 40px; animation:gridMove 20s linear infinite; pointer-events:none; z-index:0; }
+  @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(40px)} }
+  .orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0; }
+  .orb-1 { width:500px; height:500px; background:rgba(230,57,70,0.06); top:-150px; left:-150px; animation:float1 10s ease-in-out infinite; }
+  .orb-2 { width:400px; height:400px; background:rgba(255,214,10,0.04); bottom:-100px; right:-100px; animation:float2 12s ease-in-out infinite; }
+  .orb-3 { width:300px; height:300px; background:rgba(80,200,120,0.03); top:50%; left:50%; transform:translate(-50%,-50%); animation:float3 15s ease-in-out infinite; }
+  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,40px)} }
+  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,-30px)} }
+  @keyframes float3 { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-50%) scale(1.2)} }
+
+  /* HEADER */
+  .header { position:relative; z-index:10; display:flex; align-items:center; justify-content:space-between; padding:20px 40px; border-bottom:1px solid var(--border); background:rgba(10,10,15,0.8); backdrop-filter:blur(10px); flex-wrap:wrap; gap:12px; }
+  .logo-text { font-family:'Orbitron',monospace; font-size:1.8rem; font-weight:900; letter-spacing:4px; background:linear-gradient(135deg,var(--red) 0%,var(--gold) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none; }
+  .nav-links { display:flex; gap:8px; flex-wrap:wrap; }
+  .nav-btn { padding:8px 20px; border-radius:6px; font-family:'Orbitron',monospace; font-size:0.7rem; letter-spacing:2px; cursor:pointer; transition:all 0.2s; text-decoration:none; border:1px solid var(--border); color:var(--text-dim); background:none; }
+  .nav-btn:hover { border-color:var(--red); color:var(--red); }
+  .nav-btn.active { background:linear-gradient(135deg,var(--red-dark),var(--red)); border:none; color:white; }
+
+  /* MAIN */
+  .main { position:relative; z-index:10; max-width:1000px; margin:0 auto; padding:40px 20px; }
+
+  /* HERO */
+  .hero { text-align:center; margin-bottom:50px; animation:fadeDown 0.6s ease both; }
+  .hero-title { font-family:'Orbitron',monospace; font-size:2.5rem; font-weight:900; letter-spacing:6px; background:linear-gradient(135deg,var(--red),var(--gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:8px; }
+  .hero-sub { font-size:0.9rem; color:var(--text-dim); letter-spacing:3px; text-transform:uppercase; margin-bottom:24px; }
+  .month-badge { display:inline-block; background:rgba(255,214,10,0.08); border:1px solid rgba(255,214,10,0.2); color:var(--gold); font-family:'Orbitron',monospace; font-size:0.75rem; letter-spacing:3px; padding:8px 20px; border-radius:30px; }
+
+  /* TABS */
+  .tabs { display:flex; gap:0; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:4px; margin-bottom:32px; max-width:500px; margin-left:auto; margin-right:auto; }
+  .tab { flex:1; padding:12px; text-align:center; font-family:'Orbitron',monospace; font-size:0.7rem; letter-spacing:2px; border-radius:8px; cursor:pointer; transition:all 0.2s; color:var(--text-dim); border:none; background:none; }
+  .tab.active { background:linear-gradient(135deg,var(--red-dark),var(--red)); color:white; }
+  .tab:not(.active):hover { color:var(--text); }
+
+  /* TOP 3 PODIUM */
+  .podium { display:flex; align-items:flex-end; justify-content:center; gap:16px; margin-bottom:40px; min-height:200px; }
+  .podium-item { display:flex; flex-direction:column; align-items:center; gap:8px; animation:fadeUp 0.6s ease both; }
+  .podium-item:nth-child(1) { animation-delay:0.2s; }
+  .podium-item:nth-child(2) { animation-delay:0s; }
+  .podium-item:nth-child(3) { animation-delay:0.4s; }
+
+  .podium-crown { font-size:2rem; }
+  .podium-avatar { width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Orbitron',monospace; font-size:1.4rem; font-weight:900; color:white; position:relative; }
+  .podium-avatar.gold-av { background:linear-gradient(135deg,#b8860b,var(--gold)); box-shadow:0 0 20px rgba(255,214,10,0.4); }
+  .podium-avatar.silver-av { background:linear-gradient(135deg,#808080,var(--silver)); box-shadow:0 0 20px rgba(192,192,192,0.3); }
+  .podium-avatar.bronze-av { background:linear-gradient(135deg,#8b4513,var(--bronze)); box-shadow:0 0 20px rgba(205,127,50,0.3); }
+  .podium-name { font-family:'Orbitron',monospace; font-size:0.75rem; letter-spacing:1px; color:var(--text); }
+  .podium-pts { font-family:'Orbitron',monospace; font-size:0.9rem; font-weight:900; }
+  .podium-pts.gold-pts { color:var(--gold); }
+  .podium-pts.silver-pts { color:var(--silver); }
+  .podium-pts.bronze-pts { color:var(--bronze); }
+  .podium-spent { font-size:0.7rem; color:var(--text-dim); letter-spacing:1px; }
+
+  .podium-block { border-radius:8px 8px 0 0; width:100px; display:flex; align-items:center; justify-content:center; font-family:'Orbitron',monospace; font-size:1.5rem; font-weight:900; }
+  .podium-block.first { height:100px; background:linear-gradient(135deg,rgba(255,214,10,0.2),rgba(255,214,10,0.05)); border:1px solid rgba(255,214,10,0.3); color:var(--gold); }
+  .podium-block.second { height:70px; background:linear-gradient(135deg,rgba(192,192,192,0.15),rgba(192,192,192,0.03)); border:1px solid rgba(192,192,192,0.2); color:var(--silver); }
+  .podium-block.third { height:50px; background:linear-gradient(135deg,rgba(205,127,50,0.15),rgba(205,127,50,0.03)); border:1px solid rgba(205,127,50,0.2); color:var(--bronze); }
+
+  /* LEADERBOARD TABLE */
+  .board { background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+  .board-header { background:var(--surface2); padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .board-title { font-family:'Orbitron',monospace; font-size:0.75rem; letter-spacing:3px; color:var(--text-dim); }
+  .board-count { font-family:'Orbitron',monospace; font-size:0.7rem; color:var(--red); letter-spacing:1px; }
+
+  .board-row { display:grid; grid-template-columns:60px 1fr 140px 120px; align-items:center; padding:16px 24px; border-bottom:1px solid var(--border); transition:background 0.2s; animation:fadeIn 0.4s ease both; }
+  .board-row:last-child { border-bottom:none; }
+  .board-row:hover { background:rgba(255,255,255,0.02); }
+  .board-row.top1 { background:rgba(255,214,10,0.04); }
+  .board-row.top2 { background:rgba(192,192,192,0.03); }
+  .board-row.top3 { background:rgba(205,127,50,0.03); }
+
+  .board-th { display:grid; grid-template-columns:60px 1fr 140px 120px; padding:12px 24px; background:var(--surface2); border-bottom:1px solid var(--border); }
+  .th { font-family:'Orbitron',monospace; font-size:0.6rem; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; }
+
+  .rank-num { font-family:'Orbitron',monospace; font-size:1.1rem; font-weight:900; }
+  .rank-num.r1 { color:var(--gold); }
+  .rank-num.r2 { color:var(--silver); }
+  .rank-num.r3 { color:var(--bronze); }
+  .rank-num.rn { color:var(--text-dim); }
+
+  .user-cell { display:flex; align-items:center; gap:12px; }
+  .user-av { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--red-dark),var(--red)); display:flex; align-items:center; justify-content:center; font-family:'Orbitron',monospace; font-size:0.9rem; font-weight:900; color:white; flex-shrink:0; }
+  .user-av.av1 { background:linear-gradient(135deg,#b8860b,var(--gold)); }
+  .user-av.av2 { background:linear-gradient(135deg,#808080,var(--silver)); }
+  .user-av.av3 { background:linear-gradient(135deg,#8b4513,var(--bronze)); }
+  .user-name { font-family:'Orbitron',monospace; font-size:0.85rem; color:var(--text); }
+  .user-name span { color:var(--text-dim); font-size:0.75rem; }
+
+  .spent-cell { font-family:'Orbitron',monospace; font-size:0.85rem; color:var(--text-dim); }
+  .spent-cell strong { color:var(--gold); }
+
+  .pts-cell { display:flex; align-items:center; gap:8px; }
+  .pts-val { font-family:'Orbitron',monospace; font-size:1rem; font-weight:900; color:var(--red); }
+  .pts-label { font-size:0.65rem; color:var(--text-dim); letter-spacing:1px; }
+
+  .empty-state { text-align:center; padding:60px; color:var(--text-dim); font-size:0.9rem; letter-spacing:2px; }
+  .loading-state { text-align:center; padding:40px; color:var(--text-dim); font-size:0.85rem; letter-spacing:2px; animation:pulse 1.5s ease-in-out infinite; }
+
+  /* LAST UPDATED */
+  .last-updated { text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-dim); letter-spacing:1px; }
+
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  @media(max-width:600px) {
+    .header { padding:16px 20px; }
+    .hero-title { font-size:1.8rem; }
+    .board-row,.board-th { grid-template-columns:50px 1fr 100px; }
+    .board-row > .spent-cell,.board-th > .th:nth-child(3) { display:none; }
+    .podium { gap:8px; }
+    .podium-block { width:80px; }
+    .podium-avatar { width:48px; height:48px; font-size:1.1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <a href="index.html" class="logo-text">BoCrypto</a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-btn">Dashboard</a>
+    <a href="shop.html" class="nav-btn">Shop</a>
+    <span class="nav-btn active">Leaderboard</span>
+    <a href="dungeon.html" class="nav-btn">Dungeon</a>
+    <a href="faucet.html" class="nav-btn">Faucet</a>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="hero">
+    <div class="hero-title">LEADERBOARD</div>
+    <div class="hero-sub">Top BoCrypto Spenders</div>
+    <div class="month-badge" id="monthBadge">Loading...</div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" style="margin-bottom:32px;">
+    <button class="tab active" id="tab-monthly" onclick="switchTab('monthly')">🗓 MONTHLY</button>
+    <button class="tab" id="tab-alltime" onclick="switchTab('alltime')">🏆 ALL-TIME</button>
+  </div>
+
+  <!-- MONTH NAV (visible only on monthly tab) -->
+  <div id="monthNav" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:28px;">
+    <button onclick="prevMonth()" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:8px 16px;border-radius:8px;font-family:'Orbitron',monospace;font-size:0.75rem;letter-spacing:2px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">← PREV</button>
+    <div id="monthNavLabel" style="font-family:'Orbitron',monospace;font-size:0.85rem;letter-spacing:3px;color:var(--text);min-width:180px;text-align:center;"></div>
+    <button onclick="nextMonth()" id="nextMonthBtn" style="background:none;border:1px solid var(--border);color:var(--text-dim);padding:8px 16px;border-radius:8px;font-family:'Orbitron',monospace;font-size:0.75rem;letter-spacing:2px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">NEXT →</button>
+  </div>
+
+  <!-- PODIUM (top 3) -->
+  <div class="podium" id="podium"></div>
+
+  <!-- TABLE -->
+  <div class="board">
+    <div class="board-header">
+      <div class="board-title" id="boardTitle">MONTHLY RANKINGS</div>
+      <div class="board-count" id="boardCount">— players</div>
+    </div>
+    <div class="board-th">
+      <div class="th">Rank</div>
+      <div class="th">Player</div>
+      <div class="th">BoCrypto Spent</div>
+      <div class="th">Points</div>
+    </div>
+    <div id="boardRows"><div class="loading-state">Loading leaderboard...</div></div>
+  </div>
+
+  <div class="last-updated" id="lastUpdated"></div>
+</div>
+
+<script>
+  const SHOP_OWNER = 'bokica80';
+  let currentTab = 'monthly';
+  let monthlyData = [];
+  let alltimeData = [];
+  let allPurchases = [];
+
+  // Platni tokeni + konverzija u BoCrypto ekvivalent (ista kao shop.html)
+  const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 500, BCM: 1000000 };
+  const SATOSHI_TO_UNIT = { BOCRYPTO: 1, BPW: 0.00000001, BCM: 1 };
+  function toBoCrypto(amount, sym) {
+    return (amount || 0) * (PAYMENT_RATES[sym] || 0) / (SATOSHI_TO_UNIT[sym] || 1);
+  }
+  const PURCHASE_TOKENS = ['BOCRYPTO', 'BPW', 'BCM'];
+
+  // Month navigation state
+  const now = new Date();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let viewYear = now.getFullYear();
+  let viewMonth = now.getMonth(); // 0-indexed
+
+  document.getElementById('monthBadge').textContent = months[now.getMonth()] + ' ' + now.getFullYear();
+
+  function prevMonth() {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    updateMonthNav();
+    computeMonthlyData();
+    renderBoard();
+  }
+
+  function nextMonth() {
+    if (viewYear === now.getFullYear() && viewMonth >= now.getMonth()) return;
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    updateMonthNav();
+    computeMonthlyData();
+    renderBoard();
+  }
+
+  function updateMonthNav() {
+    document.getElementById('monthNavLabel').textContent = months[viewMonth] + ' ' + viewYear;
+    document.getElementById('monthBadge').textContent = months[viewMonth] + ' ' + viewYear;
+    const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
+    const nextBtn = document.getElementById('nextMonthBtn');
+    nextBtn.style.opacity = isCurrentMonth ? '0.3' : '1';
+    nextBtn.style.cursor = isCurrentMonth ? 'not-allowed' : 'pointer';
+  }
+
+  function computeMonthlyData(resetTimestamp) {
+    const startOfViewMonth = new Date(viewYear, viewMonth, 1).getTime() / 1000;
+    const endOfViewMonth = new Date(viewYear, viewMonth + 1, 1).getTime() / 1000;
+    let monthStart = startOfViewMonth;
+    // Apply reset only for current month
+    if (resetTimestamp && viewYear === now.getFullYear() && viewMonth === now.getMonth()) {
+      if (resetTimestamp > startOfViewMonth) monthStart = resetTimestamp;
+    }
+    const monthlyMap = {};
+    allPurchases
+      .filter(tx => tx.timestamp >= monthStart && tx.timestamp < endOfViewMonth)
+      .forEach(tx => {
+        if (!monthlyMap[tx.from]) monthlyMap[tx.from] = 0;
+        monthlyMap[tx.from] += tx.bcValue || 0;
+      });
+    monthlyData = Object.entries(monthlyMap)
+      .map(([user, spent]) => ({ user, spent, points: spent / 1000 }))
+      .sort((a, b) => b.spent - a.spent);
+  }
+
+  // ── FETCH DATA ──
+  async function fetchLeaderboard() {
+    try {
+      // Fetch purchases (all payment tokens) and reset timestamp in parallel
+      const [purchaseRes, bpwRes, bcmRes, resetRes] = await Promise.all([
+        fetch('https://history.hive-engine.com/accountHistory?account=' + SHOP_OWNER + '&symbol=BOCRYPTO&limit=500&offset=0'),
+        fetch('https://history.hive-engine.com/accountHistory?account=' + SHOP_OWNER + '&symbol=BPW&limit=500&offset=0'),
+        fetch('https://history.hive-engine.com/accountHistory?account=' + SHOP_OWNER + '&symbol=BCM&limit=500&offset=0'),
+        fetch('https://api.hive.blog', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ jsonrpc:'2.0', method:'condenser_api.get_account_history', params:[SHOP_OWNER, -1, 50], id:1 })
+        })
+      ]);
+
+      const purchaseData = await purchaseRes.json();
+      const bpwData = await bpwRes.json();
+      const bcmData = await bcmRes.json();
+      const resetData = await resetRes.json();
+
+      // Store all purchases globally (merge all payment tokens)
+      allPurchases = (purchaseData || [])
+        .concat(bpwData || [])
+        .concat(bcmData || [])
+        .filter(tx =>
+          tx.operation === 'tokens_transfer' && tx.to === SHOP_OWNER &&
+          tx.memo && tx.memo.includes('BoCrypto Shop:')
+        )
+        .map(tx => ({ ...tx, bcValue: toBoCrypto(tx.quantity, tx.symbol) }));
+
+      // All-time aggregation (in BoCrypto equivalent)
+      const alltimeMap = {};
+      allPurchases.forEach(tx => {
+        if (!alltimeMap[tx.from]) alltimeMap[tx.from] = 0;
+        alltimeMap[tx.from] += tx.bcValue;
+      });
+      alltimeData = Object.entries(alltimeMap)
+        .map(([user, spent]) => ({ user, spent, points: spent / 1000 }))
+        .sort((a, b) => b.spent - a.spent);
+
+      // Get reset timestamp from bocrypto-reset custom_json in hive history
+      let resetTimestamp = null;
+      try {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
+        // resetData here is account history - scan for custom_json with id bocrypto-reset
+        const ops = (resetData.result || []).map(([,op]) => op);
+        const resetOps = ops
+          .filter(op => op.op[0] === 'custom_json' && op.op[1].id === 'bocrypto-reset')
+          .map(op => {
+            try {
+              const d = JSON.parse(op.op[1].json);
+              const ts = new Date(op.timestamp + 'Z').getTime() / 1000;
+              return { ts, data: d };
+            } catch(e) { return null; }
+          })
+          .filter(r => r && r.data.action === 'monthly_reset' && r.ts >= startOfMonth);
+        if (resetOps.length) {
+          resetTimestamp = Math.max(...resetOps.map(r => r.ts));
+        }
+      } catch(e) {}
+
+      computeMonthlyData(resetTimestamp);
+      updateMonthNav();
+      document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+      renderBoard();
+    } catch(e) {
+      document.getElementById('boardRows').innerHTML = '<div class="loading-state" style="color:var(--red)">Error loading data. Please refresh.</div>';
+    }
+  }
+
+  // ── SWITCH TAB ──
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-monthly').className = 'tab' + (tab==='monthly' ? ' active' : '');
+    document.getElementById('tab-alltime').className = 'tab' + (tab==='alltime' ? ' active' : '');
+    document.getElementById('boardTitle').textContent = tab === 'monthly' ? 'MONTHLY RANKINGS' : 'ALL-TIME TOP SPENDERS';
+    document.getElementById('monthNav').style.display = tab === 'monthly' ? 'flex' : 'none';
+    document.getElementById('monthBadge').textContent = tab === 'monthly'
+      ? months[viewMonth] + ' ' + viewYear
+      : 'All Time';
+    renderBoard();
+  }
+
+  // ── RENDER ──
+  function renderBoard() {
+    const data = currentTab === 'monthly' ? monthlyData : alltimeData;
+    document.getElementById('boardCount').textContent = data.length + ' players';
+
+    // PODIUM (top 3)
+    renderPodium(data.slice(0, 3));
+
+    // TABLE (from rank 4 onwards, top 3 already in podium)
+    const rows = data.slice(3);
+    const rowsEl = document.getElementById('boardRows');
+
+    if (!data.length) {
+      rowsEl.innerHTML = '<div class="empty-state">No purchases yet this ' + (currentTab==='monthly'?'month':'time') + '.</div>';
+      return;
+    }
+
+    // Show all including top 3 in table
+    rowsEl.innerHTML = data.map((entry, i) => {
+      const rank = i + 1;
+      const rankClass = rank===1?'r1':rank===2?'r2':rank===3?'r3':'rn';
+      const rankEmoji = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'#'+rank;
+      const rowClass = rank===1?'top1':rank===2?'top2':rank===3?'top3':'';
+      const avClass = rank===1?'av1':rank===2?'av2':rank===3?'av3':'';
+      return `
+        <div class="board-row ${rowClass}" style="animation-delay:${i*0.05}s">
+          <div class="rank-num ${rankClass}">${rank <= 3 ? rankEmoji : '#'+rank}</div>
+          <div class="user-cell">
+            <div class="user-av ${avClass}">${entry.user[0].toUpperCase()}</div>
+            <div class="user-name">@${entry.user}</div>
+          </div>
+          <div class="spent-cell"><strong>${Math.round(entry.spent).toLocaleString()}</strong> BC</div>
+          <div class="pts-cell">
+            <div class="pts-val">${entry.points.toFixed(2)}</div>
+            <div class="pts-label">pts</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderPodium(top) {
+    const podium = document.getElementById('podium');
+    if (!top.length) { podium.innerHTML = ''; return; }
+
+    // Order: 2nd, 1st, 3rd for visual podium effect
+    const order = [top[1], top[0], top[2]].filter(Boolean);
+    const configs = top[1]
+      ? [
+          { crown:'🥈', avClass:'silver-av', ptsClass:'silver-pts', blockClass:'second', blockNum:'2' },
+          { crown:'🥇', avClass:'gold-av', ptsClass:'gold-pts', blockClass:'first', blockNum:'1' },
+          { crown:'🥉', avClass:'bronze-av', ptsClass:'bronze-pts', blockClass:'third', blockNum:'3' }
+        ]
+      : [
+          { crown:'🥇', avClass:'gold-av', ptsClass:'gold-pts', blockClass:'first', blockNum:'1' }
+        ];
+
+    const displayOrder = top[1] ? [top[1], top[0], top[2]].filter(Boolean) : [top[0]];
+    const displayConfigs = top[1] ? configs : [configs[1]];
+
+    podium.innerHTML = displayOrder.map((entry, i) => {
+      if (!entry) return '';
+      const cfg = displayConfigs[i];
+      return `
+        <div class="podium-item">
+          <div class="podium-crown">${cfg.crown}</div>
+          <div class="podium-avatar ${cfg.avClass}">${entry.user[0].toUpperCase()}</div>
+          <div class="podium-name">@${entry.user}</div>
+          <div class="podium-pts ${cfg.ptsClass}">${entry.points.toFixed(2)} pts</div>
+          <div class="podium-spent">${Math.round(entry.spent).toLocaleString()} BC</div>
+          <div class="podium-block ${cfg.blockClass}">${cfg.blockNum}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Init
+  fetchLeaderboard();
+
+  // Auto-refresh every 5 minutes
+  setInterval(fetchLeaderboard, 5 * 60 * 1000);
+</script>
+</body>
+</html>
