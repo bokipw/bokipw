@@ -748,7 +748,7 @@
 
   // Koliko BoCrypto vredi 1 satuši payment tokena (za konverziju cene)
   // BOCRYPTO: 1 BoCrypto = 1 BOCRYPTO | BPW: 1 satoshi = 500 BoCrypto | BCM: 1 BCM = 1,000,000 BoCrypto
-  const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 500, BCM: 1000000 };
+  const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 1000, BCM: 1000000 };
   // Koliko celih tokena (unit-a) vredi 1 satoshi datog tokena
   const SATOSHI_TO_UNIT = { BOCRYPTO: 1, BPW: 0.00000001, BCM: 1 };
   // Koliko decimala koristi svaki payment token pri slanju
@@ -764,6 +764,7 @@
   // Token catalog — sorted most expensive to cheapest
   const TOKENS = [
     {
+      id: 'BCM',
       symbol: 'BCM',
       name: 'BCM Token',
       pricePerUnit: 1000000,      // BoCrypto per 1 BCM
@@ -774,6 +775,7 @@
       decimals: 3
     },
     {
+      id: 'SWAP.BTC',
       symbol: 'SWAP.BTC',
       name: 'Swap Bitcoin',
       pricePerUnit: 1000,         // BoCrypto per 1 satoshi
@@ -784,19 +786,46 @@
       decimals: 8
     },
     {
+      id: 'SIM',
       symbol: 'SIM',
       name: 'SIM Token',
       pricePerUnit: 10000,        // BoCrypto per 1000 SIM
       unitSize: 1000,
       unitLabel: '1,000 SIM',
-      totalSupply: 100,           // in units of 1000
-      remaining: 100,
+      totalSupply: 10,            // in units of 1000
+      remaining: 10,
       decimals: 3
     },
     {
+      id: 'DEC',
+      symbol: 'DEC',
+      name: 'Dark Energy Crystals',
+      pricePerUnit: 5000,         // BoCrypto per 10 DEC
+      unitSize: 10,
+      unitLabel: '10 DEC',
+      totalSupply: 10,            // in units of 10
+      remaining: 10,
+      decimals: 3
+    },
+    {
+      id: 'DEC-BPW',
+      symbol: 'DEC',
+      name: 'Dark Energy Crystals',
+      pricePerUnit: 1000,         // BoCrypto per 1 DEC (= 1 satoshi BPW)
+      priceString: '1 satoshi BPW',
+      costLabel: 'satoshi BPW',
+      fixedPayToken: 'BPW',
+      unitSize: 1,
+      unitLabel: '1 DEC',
+      totalSupply: 10,            // in units of 1 (= 10 DEC total)
+      remaining: 10,
+      decimals: 3
+    },
+    {
+      id: 'BPW',
       symbol: 'BPW',
       name: 'BPW Token',
-      pricePerUnit: 500,          // BoCrypto per 1 satoshi BPW
+      pricePerUnit: 1000,         // BoCrypto per 1 satoshi BPW
       unitSize: 0.00000001,
       unitLabel: '1 satoshi BPW',
       totalSupply: 100000000,     // 1 BPW in satoshis
@@ -804,16 +833,18 @@
       decimals: 8
     },
     {
+      id: 'SWAP.ETH',
       symbol: 'SWAP.ETH',
       name: 'Swap Ethereum',
       pricePerUnit: 250,          // BoCrypto per 1 satoshi ETH
       unitSize: 0.00000001,
       unitLabel: '1 satoshi ETH',
-      totalSupply: 3847,          // in satoshis
-      remaining: 3847,
+      totalSupply: 1000,          // in satoshis
+      remaining: 1000,
       decimals: 8
     },
     {
+      id: 'SPT',
       symbol: 'SPT',
       name: 'Splintertalk',
       pricePerUnit: 1000,         // BoCrypto per 100 SPT
@@ -824,13 +855,17 @@
       decimals: 3
     },
     {
+      id: 'PEPE',
       symbol: 'PEPE',
       name: 'PEPE Token',
-      pricePerUnit: 1000,         // BoCrypto per 1000 PEPE
-      unitSize: 1000,
-      unitLabel: '1,000 PEPE',
-      totalSupply: 1000,          // in units of 1000
-      remaining: 1000,
+      pricePerUnit: 1000,         // BoCrypto per unit (= 1 satoshi BPW)
+      priceString: '1 satoshi BPW',
+      costLabel: 'satoshi BPW',
+      fixedPayToken: 'BPW',
+      unitSize: 100,
+      unitLabel: '100 PEPE',
+      totalSupply: 10000,         // in units of 100 (= 1,000,000 PEPE total)
+      remaining: 10000,
       decimals: 3
     }
   ];
@@ -840,28 +875,56 @@
   let userBalances = {};
   let pendingPurchase = null;
 
-  // ─── LOAD SUPPLY FROM LOCALSTORAGE ───────────────────────────────────────
-  function loadSupply() {
-    const saved = localStorage.getItem('bo_supply');
-    if (saved) {
-      const supplyData = JSON.parse(saved);
-      TOKENS.forEach(t => {
-        if (supplyData[t.symbol] !== undefined) {
-          t.remaining = supplyData[t.symbol];
+  // ─── LOAD SUPPLY FROM HIVE ENGINE (ON-CHAIN) ─────────────────────────────
+  const SHOP_MEMO_PREFIX = 'BoCrypto Shop:';
+
+  async function fetchHistoryPage(symbol, offset) {
+    const url = `https://accounts.hive-engine.com/accountHistory?account=${SHOP_OWNER}&limit=1000&offset=${offset}&symbol=${symbol}`;
+    const res = await fetch(url);
+    return await res.json();
+  }
+
+  // Zalihe se računaju iz blockchain istorije plaćanja ka shop-u (memo = "BoCrypto Shop: ...").
+  async function loadSupplyFromChain() {
+    try {
+      const sold = {};
+      const seen = {};
+      const MAX_PAGES = 10;
+      for (const sym of PAYMENT_TOKENS) {
+        for (let page = 0; page < MAX_PAGES; page++) {
+          const batch = await fetchHistoryPage(sym, page * 1000);
+          if (!batch || batch.length === 0) break;
+          for (const e of batch) {
+            if (e.from === SHOP_OWNER) continue;
+            if (seen[e.transactionId]) continue;
+            const memo = e.memo || '';
+            if (!memo.startsWith(SHOP_MEMO_PREFIX)) continue;
+            const idMatch = memo.match(/\[([^\]]+)\]$/);
+            const unitsMatch = memo.match(/\((\d+)\s*units?\)/);
+            const id = idMatch && idMatch[1];
+            const units = unitsMatch && parseInt(unitsMatch[1]);
+            if (!id || !units || units <= 0) continue;
+            seen[e.transactionId] = true;
+            sold[id] = (sold[id] || 0) + units;
+          }
+          if (batch.length < 1000) break;
         }
+      }
+      TOKENS.forEach(t => {
+        t.remaining = Math.max(0, t.totalSupply - (sold[t.id] || 0));
       });
+    } catch(e) {
+      // ako on-chain ne dostigne, ostaju podrazumevane zalihe iz totalSupply
     }
   }
 
-  function saveSupply() {
-    const supplyData = {};
-    TOKENS.forEach(t => { supplyData[t.symbol] = t.remaining; });
-    localStorage.setItem('bo_supply', JSON.stringify(supplyData));
+  async function refreshShop() {
+    await loadSupplyFromChain();
+    renderShop();
   }
 
   // ─── AUTO-LOGIN ───────────────────────────────────────────────────────────
   window.addEventListener('load', function() {
-    loadSupply();
     const saved = sessionStorage.getItem('bocrypto_user');
     if (saved) {
       currentUser = saved;
@@ -870,7 +933,7 @@
       document.getElementById('avatarEl').textContent = saved[0].toUpperCase();
       document.getElementById('displayName').textContent = '@' + saved;
       loadUserBalances(saved);
-      renderShop();
+      refreshShop();
     }
   });
 
@@ -904,7 +967,7 @@
         document.getElementById('avatarEl').textContent = username[0].toUpperCase();
         document.getElementById('displayName').textContent = '@' + username;
         loadUserBalances(username);
-        renderShop();
+        refreshShop();
       } else {
         showLoginStatus(response.message || 'Login cancelled or failed.', 'error');
       }
@@ -967,7 +1030,7 @@
         </div>
         <div class="price-row">
           <div class="price-label">Price per unit</div>
-          <div class="price-value">${token.pricePerUnit.toLocaleString()} BoCrypto</div>
+          <div class="price-value">${token.priceString || (token.pricePerUnit.toLocaleString() + ' BoCrypto')}</div>
         </div>
         <div class="price-row" style="margin-top:6px;">
           <div class="price-label">Unit size</div>
@@ -1000,7 +1063,12 @@
     if (qty > token.remaining) { el.innerHTML = `<span style="color:var(--red)">Exceeds available supply</span>`; return; }
     const total = qty * token.pricePerUnit;
     const tokenAmount = (qty * token.unitSize).toFixed(token.decimals);
-    el.innerHTML = `You receive: <span>${tokenAmount} ${token.symbol}</span> — You pay: <span>${total.toLocaleString()} BoCrypto</span>`;
+    if (token.costLabel && token.fixedPayToken) {
+      const payUnits = paymentQty(total, token.fixedPayToken) / SATOSHI_TO_UNIT[token.fixedPayToken];
+      el.innerHTML = `You receive: <span>${tokenAmount} ${token.symbol}</span> — You pay: <span>${payUnits} ${token.costLabel}</span>`;
+    } else {
+      el.innerHTML = `You receive: <span>${tokenAmount} ${token.symbol}</span> — You pay: <span>${total.toLocaleString()} BoCrypto</span>`;
+    }
   }
 
   // ─── MODAL ────────────────────────────────────────────────────────────────
@@ -1014,7 +1082,12 @@
     const tokenAmount = (qty * token.unitSize).toFixed(token.decimals);
 
     pendingPurchase = { token, qty, totalCost, tokenAmount };
-    pendingPayToken = 'BOCRYPTO';
+    pendingPayToken = token.fixedPayToken || 'BOCRYPTO';
+
+    document.querySelectorAll('.pay-opt').forEach(b => {
+      b.style.display = (token.fixedPayToken && b.dataset.token !== token.fixedPayToken) ? 'none' : '';
+      b.classList.toggle('active', b.dataset.token === pendingPayToken);
+    });
 
     document.getElementById('mToken').textContent = token.symbol;
     document.getElementById('mAmount').textContent = `${tokenAmount} ${token.symbol}`;
@@ -1091,7 +1164,7 @@
     document.getElementById('confirmBtn').textContent = 'Processing...';
     showModalStatus('Waiting for Keychain confirmation...', 'info');
 
-    const memo = `BoCrypto Shop: Buy ${tokenAmount} ${token.symbol} (${qty} units)`;
+    const memo = `BoCrypto Shop: Buy ${tokenAmount} ${token.symbol} (${qty} units) [${token.id}]`;
 
     // Hive-Engine tokens must be sent via custom_json, not requestTransfer
     const json = JSON.stringify({
@@ -1115,7 +1188,6 @@
         if (response.success) {
           userBalances[payToken] = (userBalances[payToken] || 0) - payQty;
           token.remaining = Math.max(0, token.remaining - qty);
-          saveSupply();
 
           const boBalance = userBalances['BOCRYPTO'] || 0;
           document.getElementById('boBalance').textContent = `BoCrypto: ${boBalance.toLocaleString()}`;
