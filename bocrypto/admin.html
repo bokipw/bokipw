@@ -336,6 +336,7 @@
   let orders = [];
   // deliveredTxIds persisted in localStorage - keyed by trx_id of incoming purchase
   let deliveredTxIds = new Set(JSON.parse(localStorage.getItem('bo_delivered_v2') || '[]'));
+  let shopDeleted = new Set(JSON.parse(localStorage.getItem('bo_shop_deleted') || '[]'));
 
   // ── AUTO-LOGIN ──
   window.addEventListener('load', function() {
@@ -695,6 +696,7 @@
           timestamp: tx.timestamp,
           parsed: parseMemo(tx.memo)
         }))
+        .filter(o => !shopDeleted.has(o.id))
         .sort((a, b) => b.timestamp - a.timestamp);
 
       renderOrders();
@@ -734,8 +736,10 @@
           <td>
             ${delivered
               ? '<span class="sent-label">✓ Done</span>'
-              : `<button class="send-btn" onclick="sendTokens('${o.id}','${o.buyer}','${o.parsed.amount}')" id="sbtn-${o.id.replace(/[^a-z0-9]/gi,'_')}">SEND TOKENS</button>`
+              : `<button class="send-btn" onclick="sendTokens('${o.id}','${o.buyer}','${o.parsed.amount}')" id="sbtn-${o.id.replace(/[^a-z0-9]/gi,'_')}">SEND TOKENS</button> `
+                + `<button onclick="markSent('${o.id.replace(/'/g,"\\'")}')" style="background:none;border:1px solid rgba(80,200,120,0.35);color:var(--green);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:0.65rem;font-family:'Orbitron',monospace;letter-spacing:1px;transition:all 0.2s;" onmouseover="this.style.background='rgba(80,200,120,0.15)'" onmouseout="this.style.background='none'" title="Mark as sent without sending">✓ MARK SENT</button>`
             }
+            <button onclick="deleteOrder('${o.id.replace(/'/g,"\\'")}')" style="background:none;border:1px solid rgba(230,57,70,0.25);color:rgba(230,57,70,0.5);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:0.8rem;margin-left:6px;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='rgba(230,57,70,0.25)';this.style.color='rgba(230,57,70,0.5)'" title="Delete Permanently">🗑</button>
           </td>
         </tr>
       `;
@@ -752,6 +756,26 @@
     document.getElementById('statPending').textContent = pending;
     document.getElementById('statDelivered').textContent = delivered;
     document.getElementById('statIncome').textContent = Math.round(income).toLocaleString();
+  }
+
+  // ── DELETE ORDER ──
+  function deleteOrder(orderId) {
+    if (!confirm('Permanently delete this order from admin panel?')) return;
+    shopDeleted.add(orderId);
+    localStorage.setItem('bo_shop_deleted', JSON.stringify([...shopDeleted]));
+    orders = orders.filter(o => o.id !== orderId);
+    renderOrders();
+    updateStats();
+  }
+
+  // ── MARK AS SENT (bez slanja) ──
+  function markSent(orderId) {
+    if (!confirm('Mark as SENT without sending tokens?')) return;
+    if (deliveredTxIds.has(orderId)) return;
+    deliveredTxIds.add(orderId);
+    localStorage.setItem('bo_delivered_v2', JSON.stringify([...deliveredTxIds]));
+    renderOrders();
+    updateStats();
   }
 
   // ── SEND TOKENS ──
