@@ -1,192 +1,156 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BoCrypto — Hive Login</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --red: #e63946; --red-dark: #c1121f; --gold: #ffd60a;
-    --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26;
-    --border: #2a2a3a; --text: #e8e8f0; --text-dim: #7a7a9a;
-  }
-  body { font-family:'Rajdhani',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
-  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(230,57,70,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(230,57,70,0.03) 1px,transparent 1px); background-size:40px 40px; animation:gridMove 20s linear infinite; }
-  @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(40px)} }
-  .orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; }
-  .orb-1 { width:400px; height:400px; background:rgba(230,57,70,0.08); top:-100px; left:-100px; animation:float1 8s ease-in-out infinite; }
-  .orb-2 { width:300px; height:300px; background:rgba(255,214,10,0.05); bottom:-50px; right:-50px; animation:float2 10s ease-in-out infinite; }
-  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,30px)} }
-  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,-20px)} }
-  .container { position:relative; z-index:10; width:100%; max-width:480px; padding:20px; }
-  .logo { text-align:center; margin-bottom:40px; animation:fadeDown 0.6s ease both; }
-  .logo-text { font-family:'Orbitron',monospace; font-size:2.8rem; font-weight:900; letter-spacing:4px; background:linear-gradient(135deg,var(--red) 0%,var(--gold) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-  .logo-sub { font-size:0.85rem; letter-spacing:6px; color:var(--text-dim); text-transform:uppercase; margin-top:4px; }
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:40px; position:relative; overflow:hidden; animation:fadeUp 0.6s ease 0.2s both; }
-  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--red),var(--gold),transparent); }
-  .card-title { font-family:'Orbitron',monospace; font-size:1rem; letter-spacing:3px; color:var(--text-dim); text-transform:uppercase; margin-bottom:28px; text-align:center; }
-  .input-group { margin-bottom:20px; }
-  .input-label { display:block; font-size:0.8rem; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
-  .input-wrap { position:relative; }
-  .input-wrap::before { content:'@'; position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--red); font-family:'Orbitron',monospace; font-size:0.9rem; }
-  input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px 16px 14px 38px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1.1rem; letter-spacing:1px; transition:border-color 0.2s,box-shadow 0.2s; outline:none; }
-  input:focus { border-color:var(--red); box-shadow:0 0 0 3px rgba(230,57,70,0.1); }
-  input::placeholder { color:var(--text-dim); font-size:0.95rem; }
-  .btn { width:100%; padding:16px; background:linear-gradient(135deg,var(--red-dark),var(--red)); border:none; border-radius:8px; color:white; font-family:'Orbitron',monospace; font-size:0.9rem; font-weight:700; letter-spacing:3px; text-transform:uppercase; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden; }
-  .btn::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); transition:left 0.4s; }
-  .btn:hover::before { left:100%; }
-  .btn:hover { transform:translateY(-1px); box-shadow:0 8px 25px rgba(230,57,70,0.4); }
-  .btn:active { transform:translateY(0); }
-  .btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-  .status { margin-top:16px; padding:12px 16px; border-radius:8px; font-size:0.9rem; letter-spacing:1px; display:none; animation:fadeIn 0.3s ease; }
-  .status.error { display:block; background:rgba(230,57,70,0.1); border:1px solid rgba(230,57,70,0.3); color:#ff6b78; }
-  .status.info { display:block; background:rgba(255,214,10,0.08); border:1px solid rgba(255,214,10,0.2); color:var(--gold); }
-  .keychain-note { text-align:center; margin-top:20px; font-size:0.8rem; color:var(--text-dim); letter-spacing:1px; }
-  .keychain-note a { color:var(--red); text-decoration:none; }
-  #dashboard { display:none; animation:fadeUp 0.5s ease both; }
-  .user-header { display:flex; align-items:center; gap:16px; margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid var(--border); }
-  .avatar { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--red),var(--gold)); display:flex; align-items:center; justify-content:center; font-family:'Orbitron',monospace; font-size:1.2rem; font-weight:900; color:white; flex-shrink:0; }
-  .user-info h2 { font-family:'Orbitron',monospace; font-size:1rem; color:var(--text); }
-  .user-info p { font-size:0.8rem; color:var(--text-dim); letter-spacing:1px; margin-top:2px; }
-  .logout-btn { margin-left:auto; background:none; border:1px solid var(--border); color:var(--text-dim); padding:6px 14px; border-radius:6px; font-family:'Rajdhani',sans-serif; font-size:0.85rem; letter-spacing:1px; cursor:pointer; transition:all 0.2s; }
-  .logout-btn:hover { border-color:var(--red); color:var(--red); }
-  .balances-title { font-family:'Orbitron',monospace; font-size:0.75rem; letter-spacing:3px; color:var(--text-dim); text-transform:uppercase; margin-bottom:16px; }
-  .balances-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .balance-card { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px; transition:border-color 0.2s,transform 0.2s; position:relative; overflow:hidden; }
-  .balance-card:hover { border-color:var(--red); transform:translateY(-2px); }
-  .balance-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; opacity:0; transition:opacity 0.2s; }
-  .balance-card:hover::after { opacity:1; }
-  .balance-card.hive::after { background:linear-gradient(90deg,#e63946,#ff6b78); }
-  .balance-card.hbd::after { background:linear-gradient(90deg,#ffd60a,#ffb700); }
-  .balance-card.token::after { background:linear-gradient(90deg,#4cc9f0,#4361ee); }
-  .token-symbol { font-family:'Orbitron',monospace; font-size:0.7rem; letter-spacing:2px; color:var(--text-dim); margin-bottom:8px; }
-  .token-amount { font-family:'Orbitron',monospace; font-size:1.3rem; font-weight:700; color:var(--text); }
-  .token-amount.loading { color:var(--text-dim); font-size:0.9rem; animation:pulse 1.5s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  @keyframes fadeDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  .shop-link { display:block; margin-top:20px; padding:16px; background:linear-gradient(135deg,#c1121f,#e63946); border-radius:8px; color:white; font-family:'Orbitron',monospace; font-size:0.85rem; font-weight:700; letter-spacing:3px; text-transform:uppercase; text-align:center; text-decoration:none; transition:all 0.2s; }
-  .shop-link:hover { transform:translateY(-1px); box-shadow:0 8px 25px rgba(230,57,70,0.4); }
-</style>
-</head>
-<body>
-<div class="orb orb-1"></div>
-<div class="orb orb-2"></div>
-<div class="container">
-  <div class="logo">
-    <div class="logo-text">BoCrypto</div>
-    <div class="logo-sub">Hive Web3 Platform</div>
-  </div>
-  <div class="card" id="loginCard">
-    <div class="card-title">Connect Wallet</div>
-    <div class="input-group">
-      <label class="input-label" for="username">Hive Username</label>
-      <div class="input-wrap">
-        <input type="text" id="username" placeholder="your-hive-username" autocomplete="off" />
+<html style="font-size: 16px;" lang="en"><head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="keywords" content="Passionate Gamer, Crypto Aficionado, Exploring Gaming and Cryptocurrency Worlds, Gaming Enthusiast, Diving into Thrilling Gaming Titles, Joy in PC Gaming and Crypto Space, Blockchain Gaming, Streamer Life, Embracing Gaming Universe and Blockchain, Serbian Enthusiast in Gaming and Crypto, Crypto Aficionado">
+    <meta name="description" content="BOKIPW — Bojan, gamer and crypto enthusiast from Serbia. Catch live streams, gaming content, crypto games like Splinterlands and Rising Star, and more.">
+    <title>BOKIPW | Home — Gaming &amp; Crypto Streamer</title>
+    <link rel="stylesheet" href="nicepage.css" media="screen">
+<link rel="stylesheet" href="index.css" media="screen">
+    <script class="u-script" type="text/javascript" src="jquery.js" defer=""></script>
+    <script class="u-script" type="text/javascript" src="nicepage.js" defer=""></script>
+    <meta name="generator" content="Nicepage 6.18.1, nicepage.com">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link id="u-theme-google-font" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i|Open+Sans:300,300i,400,400i,500,500i,600,600i,700,700i,800,800i">
+    <link id="u-page-google-font" rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:100,100i,300,300i,400,400i,700,700i,900,900i|Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i|Roboto+Condensed:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap">
+    
+    
+    
+    
+    <script type="application/ld+json">{
+		"@context": "http://schema.org",
+		"@type": "Organization",
+		"name": "BOKIPW",
+		"logo": "images/logo-web.png"
+}</script>
+    <meta name="theme-color" content="#478ac9">
+    <meta property="og:title" content="BOKIPW | Home — Gaming &amp; Crypto Streamer">
+    <meta property="og:type" content="website">
+  <meta data-intl-tel-input-cdn-path="intlTelInput/"></head>
+  <body data-home-page="Home.html" data-home-page-title="Home" data-path-to-root="./" data-include-products="false" class="u-body u-xl-mode" data-lang="en"><header class="u-clearfix u-header u-header" id="sec-3eed"><div class="u-clearfix u-sheet u-valign-middle u-sheet-1">
+        <a href="#" class="u-image u-logo u-image-1" data-image-width="500" data-image-height="500">
+          <img src="images/logo-web.png" class="u-logo-image u-logo-image-1">
+        </a>
+        <nav class="u-menu u-menu-dropdown u-offcanvas u-menu-1">
+          <div class="menu-collapse" style="font-size: 1rem; letter-spacing: 0px;">
+            <a class="u-button-style u-custom-left-right-menu-spacing u-custom-padding-bottom u-custom-top-bottom-menu-spacing u-nav-link u-text-active-palette-1-base u-text-hover-palette-2-base" href="#">
+              <svg class="u-svg-link" viewBox="0 0 24 24"><use xlink:href="#menu-hamburger"></use></svg>
+              <svg class="u-svg-content" version="1.1" id="menu-hamburger" viewBox="0 0 16 16" x="0px" y="0px" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg"><g><rect y="1" width="16" height="2"></rect><rect y="7" width="16" height="2"></rect><rect y="13" width="16" height="2"></rect>
+</g></svg>
+            </a>
+          </div>
+          <div class="u-nav-container">
+            <ul class="u-nav u-unstyled u-nav-1"><li class="u-nav-item"><a class="u-button-style u-nav-link u-text-active-palette-1-base u-text-hover-palette-2-base" href="./" style="padding: 10px 20px;">Home</a>
+</li><li class="u-nav-item"><a class="u-button-style u-nav-link u-text-active-palette-1-base u-text-hover-palette-2-base" href="Social-Networks.html" style="padding: 10px 20px;">Social Networks</a>
+</li><li class="u-nav-item"><a class="u-button-style u-nav-link u-text-active-palette-1-base u-text-hover-palette-2-base" href="Merch.html" style="padding: 10px 20px;">Merch</a>
+</li><li class="u-nav-item"><a class="u-button-style u-nav-link u-text-active-palette-1-base u-text-hover-palette-2-base" href="bocrypto/index.html" style="padding: 10px 20px;">BOKIPW WEB3 Platform</a></li><li class="u-nav-item"><a class="u-button-style u-nav-link u-text-active-palette-1-base u-text-hover-palette-2-base" href="https://bokipw.github.io/hive-galaxy/" target="_blank" rel="noopener" style="padding: 10px 20px;">🚀 HIVE GALAXY Game</a></li><li class="u-nav-item"><a class="u-button-style u-nav-link u-text-active-palette-1-base u-text-hover-palette-2-base" href="Donate.html" style="padding: 10px 20px;">Donate</a>
+</li></ul>
+          </div>
+          <div class="u-nav-container-collapse">
+            <div class="u-black u-container-style u-inner-container-layout u-opacity u-opacity-95 u-sidenav">
+              <div class="u-inner-container-layout u-sidenav-overflow">
+                <div class="u-menu-close"></div>
+                <ul class="u-align-center u-nav u-popupmenu-items u-unstyled u-nav-2"><li class="u-nav-item"><a class="u-button-style u-nav-link" href="./">Home</a>
+</li><li class="u-nav-item"><a class="u-button-style u-nav-link" href="Social-Networks.html">Social Networks</a>
+</li><li class="u-nav-item"><a class="u-button-style u-nav-link" href="Merch.html">Merch</a>
+</li><li class="u-nav-item"><a class="u-button-style u-nav-link" href="bocrypto/index.html">BOKIPW WEB3 Platform</a></li><li class="u-nav-item"><a class="u-button-style u-nav-link" href="https://bokipw.github.io/hive-galaxy/" target="_blank" rel="noopener">🚀 HIVE GALAXY Game</a></li><li class="u-nav-item"><a class="u-button-style u-nav-link" href="Donate.html">Donate</a>
+</li></ul>
+              </div>
+            </div>
+            <div class="u-black u-menu-overlay u-opacity u-opacity-70"></div>
+          </div>
+        </nav>
+      </div></header> 
+    <section class="u-align-center u-clearfix u-container-align-center u-image u-shading u-section-1" id="carousel_790c" data-image-width="1080" data-image-height="720">
+      <div class="u-clearfix u-sheet u-sheet-1">
+        <h4 class="u-align-center u-text u-text-default u-text-1" data-animation-name="customAnimationIn" data-animation-duration="1500">Serbian Creator</h4>
+        <h1 class="u-align-center u-text u-text-default u-text-2" data-animation-name="customAnimationIn" data-animation-duration="1500" data-animation-delay="500">BOKIPW </h1>
+        <h3 class="u-align-center u-text u-text-body-alt-color u-text-3" data-animation-name="customAnimationIn" data-animation-duration="1500" data-animation-delay="500">Gamer / Writer / Streamer / Creator<span style="font-weight: 700;"></span>
+        </h3>
       </div>
-    </div>
-    <button class="btn" id="loginBtn" onclick="loginWithKeychain()">Login with Keychain</button>
-    <div class="status" id="statusMsg"></div>
-    <div class="keychain-note">Need Keychain? <a href="https://hive-keychain.com" target="_blank">Download here</a></div>
-  </div>
-  <div class="card" id="dashboard">
-    <div class="user-header">
-      <div class="avatar" id="avatarEl">?</div>
-      <div class="user-info">
-        <h2 id="displayName">Loading...</h2>
-        <p>HIVE ACCOUNT</p>
+    </section>
+    <section class="u-align-center u-clearfix u-container-align-center u-grey-80 u-section-2" id="carousel_fe1c">
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      <div class="u-clearfix u-sheet u-valign-middle u-sheet-1">
+        <h2 class="u-align-center u-text u-text-default u-text-1">Exploring Gaming and Cryptocurrency Worlds</h2>
+        <p class="u-align-center u-text u-text-2">"I'm a gamer, not because I have no life, but because I choose to have many." </p>
+        <div class="u-expanded-width u-list u-list-1">
+          <div class="u-repeater u-repeater-1">
+            <div class="u-align-center u-container-align-center u-container-style u-list-item u-radius-20 u-repeater-item u-shape-round u-white u-list-item-1">
+              <div class="u-container-layout u-similar-container u-container-layout-1">
+                <img class="u-expanded-width u-image u-image-default u-image-1" src="images/374207641_10229743266668938_2409367158348634727_n-removebg-preview.png" alt="" data-image-width="500" data-image-height="500">
+                <h4 class="u-custom-font u-font-roboto-condensed u-hover-feature u-text u-text-3">About me<br>
+                </h4>
+                <p class="u-hover-feature u-text u-text-4">Hi there! ​My name is Bojan, but in the online world, I'm better known as BokiCa or just Boki. I'm a 46-year-old enthusiast from Serbia. I wear two hats: one as a passionate gamer and the other as a cryptocurrency aficionado.</p>
+              </div>
+            </div>
+            <div class="u-align-center u-container-align-center u-container-style u-list-item u-radius-20 u-repeater-item u-shape-round u-video-cover u-white u-list-item-2">
+              <div class="u-container-layout u-similar-container u-container-layout-2">
+                <img class="u-expanded-width u-image u-image-default u-image-2" src="images/twitch-kick-crop.png" alt="" data-image-width="1200" data-image-height="1200">
+                <h4 class="u-custom-font u-font-roboto-condensed u-hover-feature u-text u-text-5">Streamer </h4>
+                <p class="u-hover-feature u-text u-text-6">For the past 11 years, I've been on an exciting journey in the world of cryptocurrency. I've delved into the crypto gaming space, engaging with titles like Splinterlands, Rising Star, and NFT Battleminers. Exploring the possibilities of blockchain technology and decentralized finance has been a fascinating adventure, one that continues to evolve. </p>
+              </div>
+            </div>
+            <div class="u-align-center u-container-align-center u-container-style u-list-item u-radius-20 u-repeater-item u-shape-round u-video-cover u-white u-list-item-3">
+              <div class="u-container-layout u-similar-container u-container-layout-3">
+                <img class="u-expanded-width u-image u-image-default u-image-3" src="images/photo-1543068658-74cb66994079.jpeg" alt="" data-image-width="425" data-image-height="283">
+                <h4 class="u-custom-font u-font-roboto-condensed u-hover-feature u-text u-text-7">Serbian Creative Creator and Writer<br>
+                </h4>
+                <p class="u-hover-feature u-text u-text-8"> My favorite gaming genres include MMORPGs, FPS (First-Person Shooters), MOBAs (Multiplayer Online Battle Arenas), and strategy games. I find each of them offers unique challenges and experiences, and I can lose track of time exploring these virtual worlds.<br>I'm here to share my experiences, thoughts, and insights about both gaming and the crypto world. Join me on this exciting journey, and together, let's explore these immersive realms.<br>Feel free to reach out, share your thoughts, or simply connect. Let's keep the conversation going! 
+                </p>
+              </div>
+            </div>
+            <div class="u-align-center u-container-align-center u-container-style u-list-item u-radius-20 u-repeater-item u-shape-round u-video-cover u-white u-list-item-4">
+              <div class="u-container-layout u-similar-container u-container-layout-4">
+                <img class="u-expanded-width u-image u-image-default u-image-4" src="images/photo-1548686304-89d188a80029.jpeg" alt="" data-image-width="1080" data-image-height="720">
+                <h4 class="u-custom-font u-font-roboto-condensed u-hover-feature u-text u-text-9">Passionate Gamer</h4>
+                <p class="u-hover-feature u-text u-text-10"> In the realm of gaming, I find my joy. I'm primarily a PC gamer, diving into titles like Counter-Strike 2, Metro Exodus, League of Legends, the Warhammer series, and the thrilling Resident Evil series. Whether it's the heart-pounding action of first-person shooters, the strategic depth of real-time strategy games, or the immersive world of MMORPGs, I can't get enough of the gaming universe. It's not just a pastime; it's a way of life. </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-    <div class="balances-title">Token Balances</div>
-    <div class="balances-grid">
-      <div class="balance-card hive"><div class="token-symbol">HIVE</div><div class="token-amount loading" id="bal-HIVE">Loading...</div></div>
-      <div class="balance-card hbd"><div class="token-symbol">HBD</div><div class="token-amount loading" id="bal-HBD">Loading...</div></div>
-      <div class="balance-card token"><div class="token-symbol">BPW</div><div class="token-amount loading" id="bal-BPW">Loading...</div></div>
-      <div class="balance-card token"><div class="token-symbol">BOCRYPTO</div><div class="token-amount loading" id="bal-BOCRYPTO">Loading...</div></div>
-      <div class="balance-card token" style="grid-column:span 2"><div class="token-symbol">BCM</div><div class="token-amount loading" id="bal-BCM">Loading...</div></div>
-    </div>
-    <a href="shop.html" class="shop-link">🛒 ENTER SHOP</a>
-    <a href="dungeon.html" style="display:block;margin-top:12px;padding:14px;background:linear-gradient(135deg,#1a0a0a,#4a1010);border:1px solid #5a2020;border-radius:8px;color:#c43030;font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;text-align:center;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='#e63946';this.style.color='#e63946'" onmouseout="this.style.borderColor='#5a2020';this.style.color='#c43030'">⚔ BOCRYPTO DUNGEON</a>
-    <a href="leaderboard.html" style="display:block;margin-top:12px;padding:14px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;text-align:center;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">🏆 LEADERBOARD</a>
-    <a href="faucet.html" style="display:block;margin-top:12px;padding:14px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;text-align:center;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">⚡ BPW FAUCET</a>
-    <a href="https://bokipw.github.io/hive-galaxy/" target="_blank" rel="noopener" style="display:block;margin-top:12px;padding:14px;background:linear-gradient(135deg,#0a1030,#1a2a6a);border:1px solid #3a5ad0;border-radius:8px;color:#6aa0ff;font-family:'Orbitron',monospace;font-size:0.8rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;text-align:center;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='#8ab8ff';this.style.color='#8ab8ff'" onmouseout="this.style.borderColor='#3a5ad0';this.style.color='#6aa0ff'">🚀 HIVE GALAXY</a>
-  </div>
-</div>
-<script>
-  let currentUser = null;
-
-  window.addEventListener('load', function() {
-    const saved = sessionStorage.getItem('bocrypto_user');
-    if (saved) { currentUser = saved; showDashboard(saved); }
-  });
-
-  function showStatus(msg, type) { const el=document.getElementById('statusMsg'); el.textContent=msg; el.className='status '+type; }
-  function hideStatus() { document.getElementById('statusMsg').className='status'; }
-
-  async function loginWithKeychain() {
-    const username = document.getElementById('username').value.trim().toLowerCase();
-    if (!username) { showStatus('Please enter your Hive username.','error'); return; }
-    if (typeof window.hive_keychain==='undefined') { showStatus('Hive Keychain not detected. Please install the browser extension.','error'); return; }
-    const btn = document.getElementById('loginBtn');
-    btn.disabled=true; btn.textContent='Connecting...';
-    showStatus('Waiting for Keychain confirmation...','info');
-    window.hive_keychain.requestSignBuffer(username,`BoCrypto Login - ${Date.now()}`,'Posting',function(response){
-      btn.disabled=false; btn.textContent='Login with Keychain';
-      if (response.success) {
-        currentUser=username;
-        sessionStorage.setItem('bocrypto_user',username);
-        hideStatus();
-        showDashboard(username);
-      } else {
-        showStatus(response.message||'Login cancelled or failed.','error');
-      }
-    });
-  }
-
-  function showDashboard(username) {
-    document.getElementById('loginCard').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-    document.getElementById('avatarEl').textContent=username[0].toUpperCase();
-    document.getElementById('displayName').textContent='@'+username;
-    loadHiveBalances(username);
-    loadHiveEngineBalances(username);
-  }
-
-  async function loadHiveBalances(username) {
-    try {
-      const res=await fetch('https://api.hive.blog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'condenser_api.get_accounts',params:[[username]],id:1})});
-      const data=await res.json(); const account=data.result[0];
-      if(account){
-        document.getElementById('bal-HIVE').textContent=parseFloat(account.balance).toFixed(3); document.getElementById('bal-HIVE').className='token-amount';
-        document.getElementById('bal-HBD').textContent=parseFloat(account.hbd_balance).toFixed(3); document.getElementById('bal-HBD').className='token-amount';
-      }
-    } catch(e){document.getElementById('bal-HIVE').textContent='Error';document.getElementById('bal-HBD').textContent='Error';}
-  }
-
-  async function loadHiveEngineBalances(username) {
-    const tokens=['BPW','BOCRYPTO','BCM'];
-    try {
-      const res=await fetch('https://api.hive-engine.com/rpc/contracts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'find',params:{contract:'tokens',table:'balances',query:{account:username,symbol:{'$in':tokens}},limit:10,offset:0},id:1})});
-      const data=await res.json();
-      tokens.forEach(t=>{document.getElementById('bal-'+t).textContent='0.000';document.getElementById('bal-'+t).className='token-amount';});
-      (data.result||[]).forEach(b=>{const el=document.getElementById('bal-'+b.symbol);if(el){el.textContent=parseFloat(b.balance).toFixed(3);el.className='token-amount';}});
-    } catch(e){tokens.forEach(t=>{const el=document.getElementById('bal-'+t);if(el)el.textContent='Error';});}
-  }
-
-  function logout() {
-    currentUser=null;
-    sessionStorage.removeItem('bocrypto_user');
-    document.getElementById('dashboard').style.display='none';
-    document.getElementById('loginCard').style.display='block';
-    document.getElementById('username').value='';
-    hideStatus();
-  }
-
-  document.getElementById('username').addEventListener('keydown',function(e){if(e.key==='Enter')loginWithKeychain();});
-</script>
-</body>
-</html>
+    </section>
+    
+    
+    
+    <footer class="u-align-center u-clearfix u-container-align-center u-footer u-grey-80 u-footer" id="sec-1446"><div class="u-clearfix u-sheet u-sheet-1">
+        <p class="u-small-text u-text u-text-variant u-text-1">©BokiCa </p>
+      </div></footer>
+    <section class="u-backlink u-clearfix u-grey-80">
+      <p class="u-text">
+        <span>This site was created by @BokiCa </span>
+        <a class="u-link" href="https://ud.me/boki.unstoppable" target="_blank" rel="nofollow">
+          <span>my wallet</span>
+        </a>
+      </p>
+    </section>
+  
+</body></html>
