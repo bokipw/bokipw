@@ -884,6 +884,22 @@
     return await res.json();
   }
 
+  // Legacy kupovine (bez [id] u memou): mapa svodi simbol + iznos na aktuelni item.
+  function resolveLegacy(symbol, amount) {
+    const cands = TOKENS.filter(t => t.symbol === symbol);
+    if (cands.length === 1) {
+      const u = amount / cands[0].unitSize;
+      return u >= 1 ? { id: cands[0].id, units: Math.round(u) } : null;
+    }
+    for (const c of cands) {
+      const u = amount / c.unitSize;
+      if (u >= 1 && Math.abs(u - Math.round(u)) < 1e-6) {
+        return { id: c.id, units: Math.round(u) };
+      }
+    }
+    return null;
+  }
+
   // Zalihe se računaju iz blockchain istorije plaćanja ka shop-u (memo = "BoCrypto Shop: ...").
   async function loadSupplyFromChain() {
     try {
@@ -900,9 +916,20 @@
             const memo = e.memo || '';
             if (!memo.startsWith(SHOP_MEMO_PREFIX)) continue;
             const idMatch = memo.match(/\[([^\]]+)\]$/);
-            const unitsMatch = memo.match(/\((\d+)\s*units?\)/);
             const id = idMatch && idMatch[1];
-            const units = unitsMatch && parseInt(unitsMatch[1]);
+            let units;
+            if (id) {
+              const unitsMatch = memo.match(/\((\d+)\s*units?\)/);
+              units = unitsMatch && parseInt(unitsMatch[1]);
+              if (!units || units <= 0) continue;
+            } else {
+              const amtMatch = memo.match(/Buy\s+([0-9.]+)\s+([A-Z0-9.]+)/i);
+              if (!amtMatch) continue;
+              const resolved = resolveLegacy(amtMatch[2].toUpperCase(), parseFloat(amtMatch[1]));
+              if (!resolved) continue;
+              id = resolved.id;
+              units = resolved.units;
+            }
             if (!id || !units || units <= 0) continue;
             seen[e.transactionId] = true;
             sold[id] = (sold[id] || 0) + units;

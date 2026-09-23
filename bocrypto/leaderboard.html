@@ -192,7 +192,7 @@
   let allPurchases = [];
 
   // Platni tokeni + konverzija u BoCrypto ekvivalent (ista kao shop.html)
-  const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 500, BCM: 1000000 };
+  const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 1000, BCM: 1000000 };
   const SATOSHI_TO_UNIT = { BOCRYPTO: 1, BPW: 0.00000001, BCM: 1 };
   function toBoCrypto(amount, sym) {
     return (amount || 0) * (PAYMENT_RATES[sym] || 0) / (SATOSHI_TO_UNIT[sym] || 1);
