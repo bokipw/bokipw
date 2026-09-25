@@ -146,7 +146,7 @@
 <div class="main">
   <div class="hero">
     <div class="hero-title">LEADERBOARD</div>
-    <div class="hero-sub">Top BoCrypto Spenders</div>
+    <div class="hero-sub">Top BoCrypto Spenders · 1 point per 1,000 BC</div>
     <div class="month-badge" id="monthBadge">Loading...</div>
   </div>
 
@@ -194,20 +194,45 @@
   // Platni tokeni + konverzija u BoCrypto ekvivalent (ista kao shop.html)
   const PAYMENT_RATES = { BOCRYPTO: 1, BPW: 1000, BCM: 1000000 };
   const SATOSHI_TO_UNIT = { BOCRYPTO: 1, BPW: 0.00000001, BCM: 1 };
+  const PURCHASE_TOKENS = ['BOCRYPTO', 'BPW', 'BCM'];
+  const BO_CRYPTO_PER_POINT = 1000;
+  const HISTORY_PAGE_SIZE = 500;
+  const RESET_PAGE_SIZE = 1000;
+  const MAX_HISTORY_PAGES = 100;
+  let currentResetTimestamp = null;
+  let isRefreshing = false;
   function toBoCrypto(amount, sym) {
     return (amount || 0) * (PAYMENT_RATES[sym] || 0) / (SATOSHI_TO_UNIT[sym] || 1);
   }
-  const PURCHASE_TOKENS = ['BOCRYPTO', 'BPW', 'BCM'];
+  function toPoints(spent) {
+    return spent / BO_CRYPTO_PER_POINT;
+  }
+  function parseHiveTimestamp(timestamp) {
+    if (typeof timestamp === 'number') return timestamp;
+    if (typeof timestamp !== 'string') return NaN;
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(timestamp);
+    return Date.parse(hasTimezone ? timestamp : timestamp + 'Z') / 1000;
+  }
 
   // Month navigation state
-  const now = new Date();
+  let now = new Date();
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   let viewYear = now.getFullYear();
   let viewMonth = now.getMonth(); // 0-indexed
 
   document.getElementById('monthBadge').textContent = months[now.getMonth()] + ' ' + now.getFullYear();
 
+  function syncCurrentMonth() {
+    const current = new Date();
+    if (viewYear === now.getFullYear() && viewMonth === now.getMonth()) {
+      viewYear = current.getFullYear();
+      viewMonth = current.getMonth();
+    }
+    now = current;
+  }
+
   function prevMonth() {
+    syncCurrentMonth();
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
     updateMonthNav();
@@ -216,7 +241,11 @@
   }
 
   function nextMonth() {
-    if (viewYear === now.getFullYear() && viewMonth >= now.getMonth()) return;
+    syncCurrentMonth();
+    if (viewYear === now.getFullYear() && viewMonth >= now.getMonth()) {
+      updateMonthNav();
+      return;
+    }
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
     updateMonthNav();
@@ -233,7 +262,7 @@
     nextBtn.style.cursor = isCurrentMonth ? 'not-allowed' : 'pointer';
   }
 
-  function computeMonthlyData(resetTimestamp) {
+  function computeMonthlyData(resetTimestamp = currentResetTimestamp) {
     const startOfViewMonth = new Date(viewYear, viewMonth, 1).getTime() / 1000;
     const endOfViewMonth = new Date(viewYear, viewMonth + 1, 1).getTime() / 1000;
     let monthStart = startOfViewMonth;
@@ -249,77 +278,147 @@
         monthlyMap[tx.from] += tx.bcValue || 0;
       });
     monthlyData = Object.entries(monthlyMap)
-      .map(([user, spent]) => ({ user, spent, points: spent / 1000 }))
+      .map(([user, spent]) => ({ user, spent, points: toPoints(spent) }))
       .sort((a, b) => b.spent - a.spent);
   }
 
   // ── FETCH DATA ──
-  async function fetchLeaderboard() {
+  async function fetchJson(url, options) {
+    let timeout;
+    const request = fetch(url, options).then(async response => {
+      if (!response.ok) throw new Error('Request failed with status ' + response.status);
+      const data = await response.json();
+      if (data && data.error) throw new Error('API request failed');
+      return data;
+    });
+    const deadline = new Promise((resolve, reject) => {
+      timeout = setTimeout(() => reject(new Error('Request timed out')), 20000);
+    });
     try {
-      // Fetch purchases (all payment tokens) and reset timestamp in parallel
-      const [purchaseRes, bpwRes, bcmRes, resetRes] = await Promise.all([
-        fetch('https://history.hive-engine.com/accountHistory?account=' + SHOP_OWNER + '&symbol=BOCRYPTO&limit=500&offset=0'),
-        fetch('https://history.hive-engine.com/accountHistory?account=' + SHOP_OWNER + '&symbol=BPW&limit=500&offset=0'),
-        fetch('https://history.hive-engine.com/accountHistory?account=' + SHOP_OWNER + '&symbol=BCM&limit=500&offset=0'),
-        fetch('https://api.hive.blog', {
+      return await Promise.race([request, deadline]);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function fetchHistoryPage(symbol, offset) {
+    const url = 'https://accounts.hive-engine.com/accountHistory?account=' + encodeURIComponent(SHOP_OWNER) + '&symbol=' + encodeURIComponent(symbol) + '&limit=' + HISTORY_PAGE_SIZE + '&offset=' + offset;
+    const data = await fetchJson(url);
+    if (!Array.isArray(data)) throw new Error('Invalid history response');
+    return data;
+  }
+
+  async function fetchTokenHistory(symbol) {
+    const history = [];
+    for (let page = 0; page < MAX_HISTORY_PAGES; page++) {
+      const batch = await fetchHistoryPage(symbol, page * HISTORY_PAGE_SIZE);
+      history.push(...batch);
+      if (batch.length < HISTORY_PAGE_SIZE) return history;
+    }
+    throw new Error('History page limit reached for ' + symbol);
+  }
+
+  async function fetchResetTimestamp() {
+    try {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
+      let start = -1;
+      for (let page = 0; page < MAX_HISTORY_PAGES; page++) {
+        const resetData = await fetchJson('https://api.hive.blog', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ jsonrpc:'2.0', method:'condenser_api.get_account_history', params:[SHOP_OWNER, -1, 50], id:1 })
-        })
+          body: JSON.stringify({ jsonrpc:'2.0', method:'condenser_api.get_account_history', params:[SHOP_OWNER, start, RESET_PAGE_SIZE], id:1 })
+        });
+        if (!Array.isArray(resetData.result) || !resetData.result.length) return null;
+        const resetTimestamps = resetData.result
+          .map(([, op]) => op)
+          .filter(op => Array.isArray(op.op) && op.op[0] === 'custom_json' && op.op[1] && op.op[1].id === 'bocrypto-reset')
+          .map(op => {
+            try {
+              const data = JSON.parse(op.op[1].json);
+              return { ts: parseHiveTimestamp(op.timestamp), data };
+            } catch(e) {
+              return null;
+            }
+          })
+          .filter(result => result && result.data && result.data.action === 'monthly_reset' && Number.isFinite(result.ts) && result.ts >= startOfMonth)
+          .map(result => result.ts);
+        if (resetTimestamps.length) return Math.max(...resetTimestamps);
+        const pageTimestamps = resetData.result
+          .map(([, op]) => parseHiveTimestamp(op.timestamp))
+          .filter(Number.isFinite);
+        if (!pageTimestamps.length || Math.min(...pageTimestamps) < startOfMonth || resetData.result.length < RESET_PAGE_SIZE) return null;
+        const nextStart = Number(resetData.result[0][0]);
+        if (!Number.isInteger(nextStart) || nextStart === start) return null;
+        start = nextStart;
+      }
+      return null;
+    } catch(e) {
+      return null;
+    }
+  }
+
+  async function fetchLeaderboard() {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    syncCurrentMonth();
+    try {
+      const historyRequests = PURCHASE_TOKENS.map(async symbol => {
+        try {
+          return { data: await fetchTokenHistory(symbol), error: null };
+        } catch(error) {
+          return { data: [], error };
+        }
+      });
+      const [historyResults, resetTimestamp] = await Promise.all([
+        Promise.all(historyRequests),
+        fetchResetTimestamp()
       ]);
+      const failedHistories = historyResults.filter(result => result.error);
+      if (failedHistories.length === historyResults.length) throw failedHistories[0].error;
 
-      const purchaseData = await purchaseRes.json();
-      const bpwData = await bpwRes.json();
-      const bcmData = await bcmRes.json();
-      const resetData = await resetRes.json();
+      const histories = historyResults
+        .filter(result => !result.error)
+        .map(result => result.data);
+      const allHistory = histories.reduce((records, history) => records.concat(history), []);
+      const seen = new Set();
+      allPurchases = allHistory
+        .filter(tx => {
+          const transactionId = tx._id || tx.transactionId || [tx.blockNumber, tx.timestamp, tx.from, tx.to, tx.symbol, tx.quantity, tx.memo].join(':');
+          const id = tx.symbol + ':' + transactionId;
+          const quantity = Number(tx.quantity);
+          const timestamp = Number(tx.timestamp);
+          const memo = typeof tx.memo === 'string' ? tx.memo : '';
+          if (seen.has(id) || tx.operation !== 'tokens_transfer') return false;
+          if (String(tx.to || '').toLowerCase() !== SHOP_OWNER) return false;
+          if (!tx.from || String(tx.from).toLowerCase() === SHOP_OWNER) return false;
+          if (!memo.startsWith('BoCrypto Shop:')) return false;
+          if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(timestamp)) return false;
+          if (PAYMENT_RATES[tx.symbol] === undefined) return false;
+          seen.add(id);
+          return true;
+        })
+        .map(tx => ({ ...tx, from: String(tx.from).toLowerCase(), bcValue: toBoCrypto(Number(tx.quantity), tx.symbol) }));
 
-      // Store all purchases globally (merge all payment tokens)
-      allPurchases = (purchaseData || [])
-        .concat(bpwData || [])
-        .concat(bcmData || [])
-        .filter(tx =>
-          tx.operation === 'tokens_transfer' && tx.to === SHOP_OWNER &&
-          tx.memo && tx.memo.includes('BoCrypto Shop:')
-        )
-        .map(tx => ({ ...tx, bcValue: toBoCrypto(tx.quantity, tx.symbol) }));
-
-      // All-time aggregation (in BoCrypto equivalent)
       const alltimeMap = {};
       allPurchases.forEach(tx => {
         if (!alltimeMap[tx.from]) alltimeMap[tx.from] = 0;
         alltimeMap[tx.from] += tx.bcValue;
       });
       alltimeData = Object.entries(alltimeMap)
-        .map(([user, spent]) => ({ user, spent, points: spent / 1000 }))
+        .map(([user, spent]) => ({ user, spent, points: toPoints(spent) }))
         .sort((a, b) => b.spent - a.spent);
 
-      // Get reset timestamp from bocrypto-reset custom_json in hive history
-      let resetTimestamp = null;
-      try {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
-        // resetData here is account history - scan for custom_json with id bocrypto-reset
-        const ops = (resetData.result || []).map(([,op]) => op);
-        const resetOps = ops
-          .filter(op => op.op[0] === 'custom_json' && op.op[1].id === 'bocrypto-reset')
-          .map(op => {
-            try {
-              const d = JSON.parse(op.op[1].json);
-              const ts = new Date(op.timestamp + 'Z').getTime() / 1000;
-              return { ts, data: d };
-            } catch(e) { return null; }
-          })
-          .filter(r => r && r.data.action === 'monthly_reset' && r.ts >= startOfMonth);
-        if (resetOps.length) {
-          resetTimestamp = Math.max(...resetOps.map(r => r.ts));
-        }
-      } catch(e) {}
-
-      computeMonthlyData(resetTimestamp);
+      if (resetTimestamp !== null) currentResetTimestamp = resetTimestamp;
+      computeMonthlyData(currentResetTimestamp);
       updateMonthNav();
-      document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+      document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString() + (failedHistories.length ? ' (partial data)' : '');
       renderBoard();
     } catch(e) {
+      document.getElementById('boardCount').textContent = '0 players';
+      document.getElementById('podium').innerHTML = '';
       document.getElementById('boardRows').innerHTML = '<div class="loading-state" style="color:var(--red)">Error loading data. Please refresh.</div>';
+    } finally {
+      isRefreshing = false;
     }
   }
 
@@ -349,7 +448,7 @@
     const rowsEl = document.getElementById('boardRows');
 
     if (!data.length) {
-      rowsEl.innerHTML = '<div class="empty-state">No purchases yet this ' + (currentTab==='monthly'?'month':'time') + '.</div>';
+      rowsEl.innerHTML = '<div class="empty-state">No BoCrypto spending yet this ' + (currentTab==='monthly'?'month':'time') + '.</div>';
       return;
     }
 
@@ -382,7 +481,6 @@
     if (!top.length) { podium.innerHTML = ''; return; }
 
     // Order: 2nd, 1st, 3rd for visual podium effect
-    const order = [top[1], top[0], top[2]].filter(Boolean);
     const configs = top[1]
       ? [
           { crown:'🥈', avClass:'silver-av', ptsClass:'silver-pts', blockClass:'second', blockNum:'2' },
@@ -394,7 +492,7 @@
         ];
 
     const displayOrder = top[1] ? [top[1], top[0], top[2]].filter(Boolean) : [top[0]];
-    const displayConfigs = top[1] ? configs : [configs[1]];
+    const displayConfigs = top[1] ? configs : [configs[0]];
 
     podium.innerHTML = displayOrder.map((entry, i) => {
       if (!entry) return '';
