@@ -761,6 +761,15 @@
     return totalCost / PAYMENT_RATES[sym] * SATOSHI_TO_UNIT[sym];
   }
 
+  // Cena po jedinici u BoCrypto za dati payment token (podržava token-specifične cene)
+  function unitBoCost(token, payToken) {
+    if (token.payPriceBo) return token.payPriceBo[payToken] || token.pricePerUnit;
+    return token.pricePerUnit;
+  }
+  function totalBoCost(token, qty, payToken) {
+    return qty * unitBoCost(token, payToken);
+  }
+
   // Token catalog — sorted most expensive to cheapest
   const TOKENS = [
     {
@@ -869,6 +878,20 @@
       unitLabel: '100 PEPE',
       totalSupply: 10000,         // in units of 100 (= 1,000,000 PEPE total)
       remaining: 10000,
+      decimals: 3
+    },
+    {
+      id: 'STARBITS',
+      symbol: 'STARBITS',
+      name: 'STARBITS Token',
+      pricePerUnit: 1000,         // fallback BoCrypto per 1 STARBITS
+      priceString: '1 BoCrypto · 1 satoshi BPW',
+      payOptions: ['BOCRYPTO', 'BPW'],
+      payPriceBo: { BOCRYPTO: 1, BPW: 1000 },  // BoCrypto-ekvivalent cene po 1 STARBITS
+      unitSize: 1,
+      unitLabel: '1 STARBITS',
+      totalSupply: 100000,        // 100,000 STARBITS
+      remaining: 100000,
       decimals: 3
     }
   ];
@@ -1093,7 +1116,13 @@
     if (qty > token.remaining) { el.innerHTML = `<span style="color:var(--red)">Exceeds available supply</span>`; return; }
     const total = qty * token.pricePerUnit;
     const tokenAmount = (qty * token.unitSize).toFixed(token.decimals);
-    if (token.costLabel && token.fixedPayToken) {
+    if (token.payOptions && token.payPriceBo) {
+      const parts = token.payOptions.map(sym => {
+        const native = paymentQty(totalBoCost(token, qty, sym), sym) / SATOSHI_TO_UNIT[sym];
+        return `${native.toLocaleString()} ${sym === 'BPW' ? 'satoshi BPW' : sym}`;
+      });
+      el.innerHTML = `You receive: <span>${tokenAmount} ${token.symbol}</span> — You pay: <span>${parts.join(' or ')}</span>`;
+    } else if (token.costLabel && token.fixedPayToken) {
       const payUnits = paymentQty(total, token.fixedPayToken) / SATOSHI_TO_UNIT[token.fixedPayToken];
       el.innerHTML = `You receive: <span>${tokenAmount} ${token.symbol}</span> — You pay: <span>${payUnits} ${token.costLabel}</span>`;
     } else {
@@ -1112,10 +1141,12 @@
     const tokenAmount = (qty * token.unitSize).toFixed(token.decimals);
 
     pendingPurchase = { token, qty, totalCost, tokenAmount };
-    pendingPayToken = token.fixedPayToken || 'BOCRYPTO';
+    pendingPayToken = token.fixedPayToken || (token.payOptions ? token.payOptions[0] : 'BOCRYPTO');
 
     document.querySelectorAll('.pay-opt').forEach(b => {
-      b.style.display = (token.fixedPayToken && b.dataset.token !== token.fixedPayToken) ? 'none' : '';
+      const allowed = (!token.fixedPayToken || b.dataset.token === token.fixedPayToken)
+        && (!token.payOptions || token.payOptions.includes(b.dataset.token));
+      b.style.display = allowed ? '' : 'none';
       b.classList.toggle('active', b.dataset.token === pendingPayToken);
     });
 
@@ -1139,7 +1170,7 @@
 
   function updatePayUI() {
     if (!pendingPurchase) return;
-    const totalCost = pendingPurchase.totalCost;
+    const totalCost = totalBoCost(pendingPurchase.token, pendingPurchase.qty, pendingPayToken);
     const sym = pendingPayToken;
     const payQty = paymentQty(totalCost, sym);
     const payQtyStr = payQty.toFixed(PAYMENT_DECIMALS[sym]);
@@ -1174,8 +1205,9 @@
   async function confirmPurchase() {
     if (!pendingPurchase || !currentUser) return;
 
-    const { token, qty, totalCost, tokenAmount } = pendingPurchase;
+    const { token, qty, tokenAmount } = pendingPurchase;
     const payToken = pendingPayToken;
+    const totalCost = totalBoCost(token, qty, payToken);
     const payQty = paymentQty(totalCost, payToken);
     const payQtyStr = payQty.toFixed(PAYMENT_DECIMALS[payToken]);
     const tokenBalance = userBalances[payToken] || 0;
