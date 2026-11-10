@@ -716,6 +716,13 @@
     return { amount: '?', units: '?' };
   }
 
+  function fmtPaid(n) {
+    if (!isFinite(n)) return '?';
+    if (n !== 0 && Math.abs(n) < 0.001) return n.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
+    if (Number.isInteger(n)) return n.toLocaleString();
+    return n.toLocaleString(undefined, { maximumFractionDigits: 8 });
+  }
+
   function renderOrders() {
     const tbody = document.getElementById('ordersBody');
     if (!orders.length) {
@@ -731,7 +738,7 @@
           <td><div class="buyer-name">@${o.buyer}</div></td>
           <td><span class="token-tag">${tokenSymbol}</span></td>
           <td><div class="amount-val">${o.parsed.amount}</div></td>
-          <td><div class="paid-val">${o.paid.toLocaleString()} ${o.symbol}</div></td>
+          <td><div class="paid-val">${fmtPaid(o.paid)} ${o.symbol}</div></td>
           <td><div class="date-val">${date}</div></td>
           <td><span class="status-badge ${delivered?'sent':'pending'}">${delivered?'✓ SENT':'PENDING'}</span></td>
           <td>
