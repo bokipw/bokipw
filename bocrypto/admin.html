@@ -187,6 +187,10 @@
         <div class="stat-label">BoCrypto Received</div>
         <div class="stat-value gold" id="statIncome">—</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">Received by Token</div>
+        <div class="stat-value" id="statByToken" style="font-size:0.8rem;line-height:1.6;">—</div>
+      </div>
     </div>
 
     <!-- MONTHLY RESET -->
@@ -285,6 +289,14 @@
         <div class="stat-label">Completed</div>
         <div class="stat-value green" id="fStatCompleted">—</div>
       </div>
+      <div class="stat-card">
+        <div class="stat-label">BPW Paid Out (satoshi)</div>
+        <div class="stat-value gold" id="fStatPaid">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">BoCrypto Fees</div>
+        <div class="stat-value gold" id="fStatFees">—</div>
+      </div>
     </div>
 
     <div class="section-title">
@@ -336,6 +348,7 @@
 
   let currentUser = null;
   let orders = [];
+  let statsOrders = [];
   // deliveredTxIds persisted in localStorage - keyed by trx_id of incoming purchase
   let deliveredTxIds = new Set(JSON.parse(localStorage.getItem('bo_delivered_v2') || '[]'));
   let shopDeleted = new Set(JSON.parse(localStorage.getItem('bo_shop_deleted') || '[]'));
@@ -565,6 +578,7 @@
 
   // ── FAUCET WITHDRAW REQUESTS ──
   let faucetRequests = [];
+  let faucetStats = [];
   let faucetCompleted = new Set(JSON.parse(localStorage.getItem('bo_faucet_completed') || '[]'));
   let faucetDeleted = new Set(JSON.parse(localStorage.getItem('bo_faucet_deleted') || '[]'));
 
@@ -574,22 +588,23 @@
       const res = await fetch('https://history.hive-engine.com/accountHistory?account=' + ADMIN_USER + '&symbol=BOCRYPTO&limit=500&offset=0');
       const data = await res.json();
 
-      faucetRequests = (data || [])
+      faucetStats = (data || [])
         .filter(tx => tx.operation === 'tokens_transfer' && tx.to === ADMIN_USER && tx.memo && tx.memo.indexOf('BPW_WITHDRAW:') === 0)
         .map(tx => {
           const parts = tx.memo.split(':');
           const txId = tx.trx_id || (tx.timestamp + '_' + (parts[1] || tx.from));
-          if (faucetDeleted.has(txId)) return null;
           return {
             id: txId,
             user: parts[1] || tx.from,
             amount: parseInt(parts[2]) || 250,
+            fee: parseFloat(tx.quantity) || 0,
             timestamp: tx.timestamp,
             completed: faucetCompleted.has(txId)
           };
         })
-        .filter(Boolean)
         .sort((a, b) => b.timestamp - a.timestamp);
+
+      faucetRequests = faucetStats.filter(r => !faucetDeleted.has(r.id));
 
       renderFaucetTable();
       updateFaucetStats();
@@ -626,11 +641,16 @@
   }
 
   function updateFaucetStats() {
-    const total = faucetRequests.length;
-    const completed = faucetRequests.filter(r => r.completed).length;
+    const total = faucetStats.length;
+    const completed = faucetStats.filter(r => r.completed).length;
+    const pending = faucetRequests.filter(r => !r.completed).length;
+    const paidOut = faucetStats.reduce((s,r)=>s + (r.amount||0), 0);
+    const fees = faucetStats.reduce((s,r)=>s + (r.fee||0), 0);
     document.getElementById('fStatTotal').textContent = total;
-    document.getElementById('fStatPending').textContent = total - completed;
+    document.getElementById('fStatPending').textContent = pending;
     document.getElementById('fStatCompleted').textContent = completed;
+    document.getElementById('fStatPaid').textContent = paidOut.toLocaleString();
+    document.getElementById('fStatFees').textContent = fees.toLocaleString();
   }
 
   function sendBPW(username, amount, requestId) {
@@ -687,7 +707,7 @@
       const bcmData = await bcmRes.json();
       const data = (bocryptoData||[]).concat(bpwData||[]).concat(bcmData||[]);
 
-      orders = data
+      statsOrders = data
         .filter(tx => tx.operation === 'tokens_transfer' && tx.to === ADMIN_USER && tx.memo && tx.memo.includes('BoCrypto Shop:'))
         .map(tx => ({
           id: tx.trx_id || (tx.timestamp + '_' + tx.from),
@@ -698,8 +718,9 @@
           timestamp: tx.timestamp,
           parsed: parseMemo(tx.memo)
         }))
-        .filter(o => !shopDeleted.has(o.id))
         .sort((a, b) => b.timestamp - a.timestamp);
+
+      orders = statsOrders.filter(o => !shopDeleted.has(o.id));
 
       renderOrders();
       updateStats();
@@ -756,15 +777,18 @@
   }
 
   function updateStats() {
-    const total = orders.length;
-    const delivered = orders.filter(o=>deliveredTxIds.has(o.id)).length;
-    const pending = total - delivered;
-    // Prihod u BoCrypto ekvivalentu (konvertuje BPW/BCM uplate)
-    const income = orders.reduce((s,o)=>s + toBoCrypto(o.paid, o.symbol), 0);
+    const total = statsOrders.length;
+    const delivered = statsOrders.filter(o=>deliveredTxIds.has(o.id)).length;
+    const pending = orders.filter(o=>!deliveredTxIds.has(o.id)).length;
+    const income = statsOrders.reduce((s,o)=>s + toBoCrypto(o.paid, o.symbol), 0);
+    const byToken = {};
+    statsOrders.forEach(o => { byToken[o.symbol] = (byToken[o.symbol]||0) + (o.paid||0); });
+    const byTokenStr = Object.keys(byToken).map(sym => fmtPaid(byToken[sym]) + ' ' + sym).join(' · ');
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statPending').textContent = pending;
     document.getElementById('statDelivered').textContent = delivered;
     document.getElementById('statIncome').textContent = Math.round(income).toLocaleString();
+    document.getElementById('statByToken').textContent = byTokenStr || '—';
   }
 
   // ── DELETE ORDER ──
